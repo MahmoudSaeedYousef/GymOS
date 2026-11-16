@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="GymOS.Api/GymOS.Api.csproj" />
+  <Project Path="GymOS.Application/GymOS.Application.csproj" />
+  <Project Path="GymOS.Domain/GymOS.Domain.csproj" />
+  <Project Path="GymOS.Infrastructure/GymOS.Infrastructure.csproj" />
+</Solution>
