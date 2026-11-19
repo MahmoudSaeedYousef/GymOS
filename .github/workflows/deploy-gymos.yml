@@ -1,4 +1,12 @@
-- name: Deploy to VPS
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
