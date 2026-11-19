@@ -60,7 +60,11 @@ builder.Services.AddScoped<IGymDbContext>(sp => sp.GetRequiredService<GymDbConte
 builder.Services.AddMediatR(cfg => 
     cfg.RegisterServicesFromAssembly(typeof(CreatePlanCommand).Assembly));
 var app = builder.Build();
-
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<GymDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 app.UseAuthentication();
 app.UseAuthorization();
 
