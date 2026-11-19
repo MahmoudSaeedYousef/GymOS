@@ -1,10 +1,74 @@
+using System.Text;
+using GymOS.Api.Endpoints;
+using GymOS.Application.Features.Plans.Commands.CreatePlan;
 using GymOS.Application.Interfaces;
+using GymOS.Domain.Entities;
+using GymOS.Infrastructure.Data;
 using GymOS.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// هنا السحر: بنقول للسيستم أي حد يطلب IFileStorageService إديله LocalFileStorageService
-builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+builder.Services.AddDbContext<GymDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<GymDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ICacheService, InMemoryCacheService>();
+
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var secretKey = jwtSettings["Key"] ?? "GymOSSuperSecretKeyForJwtAuthenticationWhichMustBeAtLeast32Chars!";
+
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine($"JWT Auth Failed: {context.Exception.Message}");
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
+builder.Services.AddScoped<IGymDbContext>(sp => sp.GetRequiredService<GymDbContext>());
+builder.Services.AddMediatR(cfg => 
+    cfg.RegisterServicesFromAssembly(typeof(CreatePlanCommand).Assembly));
 var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapAuthEndpoints();
+app.MapGymEndpoints();
+app.MapAttendanceEndpoints();
+app.MapPaymentsEndpoints();
+app.MapDashboardEndpoints();
+app.MapPlansEndpoints();
+
 app.Run();

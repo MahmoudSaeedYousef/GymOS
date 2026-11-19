@@ -1,0 +1,35 @@
+@host = http://localhost:5158
+
+### 1. تسجيل الدخول والتقاط التوكن
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "phoneNumber": "01012345679",
+  "password": "StrongPassword123!"
+}
+
+> {%
+    client.global.set("token", response.body.token);
+%}
+
+### 2. إنشاء باقة جديدة
+POST {{host}}/api/gym/plans
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "باقة شهرية VIP",
+  "price": 500,
+  "durationInDays": 30,
+  "maxSessions": null
+}
+### 3. تسجيل مستخدم جديد
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Mahmoud Saeed",
+  "phoneNumber": "01012345679",
+  "password": "StrongPassword123!"
+}

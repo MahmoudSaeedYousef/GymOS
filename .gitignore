@@ -1,0 +1,6 @@
+.env
+infra/.env
+**/bin/
+**/obj/
+.idea/
+.DS_Store
