@@ -1,3 +1,15 @@
+name: Deploy GymOS Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "infra/**"
+      - ".github/workflows/deploy-gymos.yml"
+  workflow_dispatch:
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
