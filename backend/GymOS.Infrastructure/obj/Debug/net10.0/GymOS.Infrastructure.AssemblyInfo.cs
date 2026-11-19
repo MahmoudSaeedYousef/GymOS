@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GymOS.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4e1c66348044b35041edda9e4fa2ab5a2a9fd904")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5933ccd69142028257d5dbcd14df605bfc53e5ff")]
 [assembly: System.Reflection.AssemblyProductAttribute("GymOS.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GymOS.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

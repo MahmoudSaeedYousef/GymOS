@@ -39,13 +39,11 @@ public class GymDbContext(
             .HasMethod("gin")
             .HasOperators("gin_trgm_ops");
         
-        // استخراج الـ TenantId من الـ Service المرجعية بتاعتك
-        var tenantId = currentTenantService?.TenantId;
 
-        // تفعيل العزل (Multi-Tenancy) للجداول الجديدة
-        builder.Entity<AttendanceRecord>().HasQueryFilter(e => e.TenantId == tenantId);
-        builder.Entity<PaymentRecord>().HasQueryFilter(e => e.TenantId == tenantId);
-
+// تفعيل العزل (Multi-Tenancy) للجداول الجديدة (يُقيّم ديناميكياً مع كل Request)
+        builder.Entity<AttendanceRecord>().HasQueryFilter(e => e.TenantId == currentTenantService.TenantId);
+        builder.Entity<PaymentRecord>().HasQueryFilter(e => e.TenantId == currentTenantService.TenantId);
+        
         // إعداد الـ Relations (علشان لما تمسح يوزر، تمسح حضوره ومدفوعاته أو تخليها Null حسب البيزنس بتاعك)
         // يُفضل استخدام Cascade Delete للمشتركين عشان الداتابيز تنضف
         builder.Entity<AttendanceRecord>()
