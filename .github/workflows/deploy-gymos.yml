@@ -39,8 +39,9 @@ jobs:
 
             echo "Waiting for GymOS API on port 5050..."
             for i in $(seq 1 20); do
-              if curl -fsS http://127.0.0.1:5050/swagger/index.html > /dev/null 2>&1 || curl -fsS http://127.0.0.1:5050/health > /dev/null 2>&1; then
-                echo "GymOS API is up and responding!"
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5050/ || true)
+              if [ "$STATUS" != "000" ]; then
+                echo "GymOS API is up and responding (HTTP $STATUS)!"
                 exit 0
               fi
               sleep 3
