@@ -61,5 +61,10 @@ public class GymDbContext(
         // Index لتسريع جلب حضور مشترك معين مترتب بالتاريخ (ده هيفيدنا جداً في شاشة بروفايل المشترك)
         builder.Entity<AttendanceRecord>()
             .HasIndex(a => new { a.MemberId, a.CheckInTime });
+        
+        builder.Entity<PaymentRecord>()
+            .HasIndex(p => new { p.TenantId, p.OperationId })
+            .IsUnique()
+            .HasFilter("\"OperationId\" IS NOT NULL");
     }
 }

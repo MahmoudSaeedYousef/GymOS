@@ -1,5 +1,6 @@
 using GymOS.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace GymOS.Application.Interfaces;
 
@@ -11,5 +12,6 @@ public interface IGymDbContext
     DbSet<ApplicationUser> Users { get; }
     DbSet<AttendanceRecord> AttendanceRecords { get; }
     DbSet<PaymentRecord> PaymentRecords { get;}
+    DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

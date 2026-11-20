@@ -74,5 +74,6 @@ app.MapAttendanceEndpoints();
 app.MapPaymentsEndpoints();
 app.MapDashboardEndpoints();
 app.MapPlansEndpoints();
+app.MapVisitEndpoints();
 
 app.Run();

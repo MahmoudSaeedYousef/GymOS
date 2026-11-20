@@ -22,5 +22,9 @@ public class PaymentRecord
     public Guid? PlanId { get; set; }
     public Plan? Plan { get; set; }
     
+    public Guid? OperationId { get; set; }        // opId لمنع التكرار وجاهزية O1
+    public bool IsDropIn { get; set; } = false;   // لفصل إيراد الحصص عن الاشتراكات في التقارير
+    public Guid? ReversedPaymentId { get; set; }
+    
     public string? Notes { get; set; } // مثال: "رقم عملية إنستاباي: 123456"
 }

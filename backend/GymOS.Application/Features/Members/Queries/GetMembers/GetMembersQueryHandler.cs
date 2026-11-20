@@ -16,7 +16,7 @@ public class GetMembersQueryHandler(IGymDbContext context)
         var today = now.Date;
         var sortBy = (request.SortBy ?? "newest").ToLower();
 
-        var query = context.Users.AsNoTracking();
+        var query = context.Users.AsNoTracking().Where(c=>!c.IsGuest);
 
         // 1. الفلترة
         query = request.Filter?.ToLower() switch

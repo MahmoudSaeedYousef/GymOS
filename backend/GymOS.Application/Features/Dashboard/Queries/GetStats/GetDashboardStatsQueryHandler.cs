@@ -18,14 +18,23 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
         var activeMembers = await context.Users
             .CountAsync(u => u.SubscriptionEndDate >= now, cancellationToken);
             
+        // استبعاد الضيوف من عداد الاشتراكات المنتهية
         var expiredMembers = await context.Users
-            .CountAsync(u => u.SubscriptionEndDate < now, cancellationToken);
-            
+            .CountAsync(u => !u.IsGuest && u.SubscriptionEndDate < now, cancellationToken);
+
+        
         var todayCheckIns = await context.AttendanceRecords.Where(a => a.CheckInTime >= today).Select(c=>c.MemberId).Distinct().CountAsync(cancellationToken: cancellationToken);
-//            .CountAsync(a => a.CheckInTime >= today, cancellationToken);
             
+        var todayRevenue = await context.PaymentRecords
+            .Where(p => p.PaymentDate >= today)
+            .SumAsync(p => p.Amount, cancellationToken);
+
         var monthlyRevenue = await context.PaymentRecords
             .Where(p => p.PaymentDate >= startOfMonth)
+            .SumAsync(p => p.Amount, cancellationToken);
+        
+        var monthlyDropInRevenue = await context.PaymentRecords
+            .Where(p => p.PaymentDate >= startOfMonth && p.IsDropIn)
             .SumAsync(p => p.Amount, cancellationToken);
         
         var sessionMinutes = await context.Tenants
@@ -39,11 +48,14 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
             .Select(a => a.MemberId)
             .Distinct()
             .CountAsync(cancellationToken);
+        
         return new DashboardStatsDto(
             ActiveMembersCount: activeMembers,
             TodayCheckInsCount: todayCheckIns,
             ExpiredSubscriptionsCount: expiredMembers,
             MonthlyRevenue: monthlyRevenue,
+            TodayRevenue: todayRevenue,
+            MonthlyDropInRevenue:monthlyDropInRevenue,
             CurrentInside :currentInside
         );
     }

@@ -15,7 +15,14 @@ public class ApplicationUser : IdentityUser
     public UserType Type { get; set; }
     public Guid TenantId { get; set; }
     public DateTime? SubscriptionEndDate { get; set; }
-
+    public bool IsGuest { get; set; } = false;
     public virtual ICollection<AttendanceRecord> AttendanceRecords { get; set; } = new List<AttendanceRecord>();
     public virtual ICollection<PaymentRecord> PaymentRecords { get; set; } = new List<PaymentRecord>();
+    
+    public void ConvertGuestToMember(string fullName, string phoneNumber)
+    {
+        FullName = fullName;
+        PhoneNumber = phoneNumber;
+        IsGuest = false;
+    }
 }
