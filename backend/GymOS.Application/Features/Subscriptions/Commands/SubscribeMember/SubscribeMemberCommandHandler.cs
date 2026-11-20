@@ -29,6 +29,13 @@ public class SubscribeMemberCommandHandler(IGymDbContext context, ICurrentTenant
         // تفعيل الاشتراك عبر الـ State Machine Guard
         subscription.Activate();
 
+        var member = await context.Users
+            .FirstOrDefaultAsync(u => u.Id == request.MemberId, cancellationToken)
+            ?? throw new KeyNotFoundException("Member not found.");
+
+        member.SubscriptionEndDate = subscription.EndDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        member.IsGuest = false;
+
         context.Subscriptions.Add(subscription);
         await context.SaveChangesAsync(cancellationToken);
 

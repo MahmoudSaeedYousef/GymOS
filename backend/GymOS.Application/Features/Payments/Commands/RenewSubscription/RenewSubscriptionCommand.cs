@@ -49,6 +49,7 @@ public class RenewSubscriptionCommandHandler(IGymDbContext context)
 
 // 4. تحديث الـ User (Denormalization للسرعة وقت تسجيل الحضور)
         member.SubscriptionEndDate = newEndDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        member.IsGuest = false;
 
         // 5. توثيق الاشتراك في الدفتر التاريخي (جدول Subscriptions)
         var subscription = new Subscription
@@ -60,6 +61,7 @@ public class RenewSubscriptionCommandHandler(IGymDbContext context)
             EndDate = newEndDate,
             // Status = "Active" // فعلها لو عندك Enum للحالة
         };
+        subscription.Activate();
         context.Subscriptions.Add(subscription);
 
         // 6. توثيق المدفوعات
@@ -68,7 +70,7 @@ public class RenewSubscriptionCommandHandler(IGymDbContext context)
             MemberId = member.Id,
             TenantId = member.TenantId.ToString(),
             PlanId = plan.Id,
-            Amount = request.AmountPaid,
+            Amount = request.AmountPaid > 0 ? request.AmountPaid : plan.Price,
             Method = request.PaymentMethod,
             PaymentDate = DateTime.UtcNow,
             Notes = request.Notes
