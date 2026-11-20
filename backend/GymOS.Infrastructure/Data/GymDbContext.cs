@@ -15,6 +15,7 @@ public class GymDbContext(
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
     public DbSet<PaymentRecord> PaymentRecords => Set<PaymentRecord>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -66,5 +67,15 @@ public class GymDbContext(
             .HasIndex(p => new { p.TenantId, p.OperationId })
             .IsUnique()
             .HasFilter("\"OperationId\" IS NOT NULL");
+
+        builder.Entity<IdempotencyRecord>(b =>
+        {
+            b.HasKey(e => e.Id);
+            b.Property(e => e.IdempotencyKey).HasMaxLength(100).IsRequired();
+            b.Property(e => e.RequestPath).HasMaxLength(256).IsRequired();
+            b.Property(e => e.ResponseBody).IsRequired();
+            b.HasIndex(e => new { e.GymId, e.IdempotencyKey }).IsUnique();
+        });
+        builder.Entity<IdempotencyRecord>().HasQueryFilter(e => e.GymId.ToString() == currentTenantService.TenantId);
     }
 }

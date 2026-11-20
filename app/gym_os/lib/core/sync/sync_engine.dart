@@ -1,0 +1,526 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
+import 'package:drift/drift.dart';
+import 'package:flutter/widgets.dart';
+
+import '../database/app_database.dart';
+
+/// State representation for synchronization and connectivity.
+class SyncState {
+  final bool isOnline;
+  final bool isSyncing;
+  final int pendingCount;
+  final DateTime? lastSyncedAt;
+
+  const SyncState({
+    required this.isOnline,
+    required this.isSyncing,
+    required this.pendingCount,
+    this.lastSyncedAt,
+  });
+
+  SyncState copyWith({
+    bool? isOnline,
+    bool? isSyncing,
+    int? pendingCount,
+    DateTime? lastSyncedAt,
+  }) {
+    return SyncState(
+      isOnline: isOnline ?? this.isOnline,
+      isSyncing: isSyncing ?? this.isSyncing,
+      pendingCount: pendingCount ?? this.pendingCount,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+    );
+  }
+}
+
+/// Mutex-guarded sync engine coordinating offline outbox push and server state pull.
+class SyncEngine {
+  final Dio dio;
+  final AppDatabase db;
+  final Connectivity connectivity;
+
+  bool _isSyncing = false;
+  bool _isOnline = true;
+  int _pendingCount = 0;
+  DateTime? _lastSyncedAt;
+
+  final StreamController<SyncState> _stateController =
+      StreamController<SyncState>.broadcast();
+  StreamSubscription<int>? _pendingSubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+
+  SyncEngine({
+    required this.dio,
+    required this.db,
+    required this.connectivity,
+  }) {
+    _init();
+  }
+
+  bool get isSyncing => _isSyncing;
+  bool get isOnline => _isOnline;
+  int get pendingCount => _pendingCount;
+  DateTime? get lastSyncedAt => _lastSyncedAt;
+
+  SyncState get currentState => SyncState(
+        isOnline: _isOnline,
+        isSyncing: _isSyncing,
+        pendingCount: _pendingCount,
+        lastSyncedAt: _lastSyncedAt,
+      );
+
+  Stream<SyncState> get stateStream => _stateController.stream;
+
+  void _init() {
+    _pendingSubscription = db.syncOutboxDao.watchPendingCount().listen((count) {
+      _pendingCount = count;
+      _emitState();
+    });
+
+    _connectivitySubscription =
+        connectivity.onConnectivityChanged.listen((results) {
+      final online = results.any((r) => r != ConnectivityResult.none);
+      final wasOffline = !_isOnline;
+      _isOnline = online;
+      _emitState();
+
+      if (wasOffline && online) {
+        syncNow();
+      }
+    });
+
+    connectivity.checkConnectivity().then((results) {
+      _isOnline = results.any((r) => r != ConnectivityResult.none);
+      _emitState();
+    });
+
+    db.syncOutboxDao.getMetadata('last_pulled_at').then((val) {
+      if (val != null) {
+        _lastSyncedAt = DateTime.tryParse(val)?.toLocal();
+        _emitState();
+      }
+    });
+  }
+
+  void _emitState() {
+    if (!_stateController.isClosed) {
+      _stateController.add(currentState);
+    }
+  }
+
+  /// Full synchronization cycle:
+  /// Always pushes pending local outbox operations FIRST, then pulls latest server state SECOND.
+  Future<void> syncNow() async {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    _emitState();
+
+    try {
+      final connectivityResults = await connectivity.checkConnectivity();
+      _isOnline = connectivityResults.any((r) => r != ConnectivityResult.none);
+      _emitState();
+
+      if (!_isOnline) {
+        return;
+      }
+
+      // Step 1: Push pending mutations FIRST
+      await pushPendingOperations();
+
+      // Step 2: Pull latest state from backend SECOND
+      await pullLatestState();
+
+      _lastSyncedAt = DateTime.now();
+      await db.syncOutboxDao.setMetadata(
+        'last_pulled_at',
+        _lastSyncedAt!.toUtc().toIso8601String(),
+      );
+    } catch (_) {
+      // Non-fatal sync cycle error handled gracefully
+    } finally {
+      _isSyncing = false;
+      _emitState();
+    }
+  }
+
+  /// Dispatches pending outbox operations to backend in strict FIFO order.
+  Future<void> pushPendingOperations() async {
+    final pendingOps = await db.syncOutboxDao.getPendingOperations(limit: 25);
+    if (pendingOps.isEmpty) return;
+
+    for (final op in pendingOps) {
+      await db.syncOutboxDao.markSyncing(op.id);
+
+      Map<String, dynamic> payload = {};
+      try {
+        payload = jsonDecode(op.payloadJson) as Map<String, dynamic>;
+      } catch (_) {
+        payload = {};
+      }
+
+      final options = Options(
+        headers: {'X-Idempotency-Key': op.operationId},
+      );
+
+      try {
+        switch (op.entityType) {
+          case 'member_create':
+            await dio.post(
+              '/api/gym/members',
+              data: {
+                'id': op.entityId,
+                'clientId': op.entityId,
+                'occurredAtUtc': op.createdAt.toUtc().toIso8601String(),
+                ...payload,
+              },
+              options: options,
+            );
+            break;
+
+          case 'member_renew':
+            try {
+              await dio.post(
+                '/api/payments/renew',
+                data: {
+                  'clientId': op.operationId,
+                  'occurredAtUtc': op.createdAt.toUtc().toIso8601String(),
+                  ...payload,
+                },
+                options: options,
+              );
+            } on DioException catch (e) {
+              if (e.response?.statusCode == 404 && payload['memberId'] != null) {
+                await dio.post(
+                  '/api/gym/members/${payload['memberId']}/renew',
+                  data: {
+                    'clientId': op.operationId,
+                    'occurredAtUtc': op.createdAt.toUtc().toIso8601String(),
+                    ...payload,
+                  },
+                  options: options,
+                );
+              } else {
+                rethrow;
+              }
+            }
+            break;
+
+          case 'checkin':
+            try {
+              await dio.post(
+                '/api/attendance/check-in',
+                data: {
+                  'id': op.entityId,
+                  'clientId': op.entityId,
+                  'memberId': payload['memberId'],
+                  'notes': payload['notes'],
+                  'occurredAtUtc': op.createdAt.toUtc().toIso8601String(),
+                  ...payload,
+                },
+                options: options,
+              );
+            } on DioException catch (e) {
+              if (e.response?.statusCode == 404) {
+                await dio.post(
+                  '/api/gym/attendance/check-in',
+                  data: {
+                    'id': op.entityId,
+                    'clientId': op.entityId,
+                    'memberId': payload['memberId'],
+                    'occurredAtUtc': op.createdAt.toUtc().toIso8601String(),
+                    ...payload,
+                  },
+                  options: options,
+                );
+              } else {
+                rethrow;
+              }
+            }
+            break;
+
+          case 'checkout':
+            final recordId =
+                payload['attendanceId'] ?? payload['recordId'] ?? op.entityId;
+            try {
+              await dio.post(
+                '/api/attendance/$recordId/check-out',
+                data: {
+                  'attendanceId': recordId,
+                  'memberId': payload['memberId'],
+                  'occurredAtUtc': op.createdAt.toUtc().toIso8601String(),
+                  ...payload,
+                },
+                options: options,
+              );
+            } on DioException catch (e) {
+              if (e.response?.statusCode == 404) {
+                await dio.post(
+                  '/api/gym/attendance/check-out',
+                  data: {
+                    'attendanceId': recordId,
+                    'memberId': payload['memberId'],
+                    'occurredAtUtc': op.createdAt.toUtc().toIso8601String(),
+                    ...payload,
+                  },
+                  options: options,
+                );
+              } else {
+                rethrow;
+              }
+            }
+            break;
+
+          case 'dropin':
+            try {
+              await dio.post(
+                '/api/visits/drop-in',
+                data: {
+                  'clientId': op.entityId,
+                  'attendanceId': op.entityId,
+                  'occurredAtUtc': op.createdAt.toUtc().toIso8601String(),
+                  ...payload,
+                },
+                options: options,
+              );
+            } on DioException catch (e) {
+              if (e.response?.statusCode == 404) {
+                await dio.post(
+                  '/api/gym/attendance/drop-in',
+                  data: {
+                    'clientId': op.entityId,
+                    'attendanceId': op.entityId,
+                    'occurredAtUtc': op.createdAt.toUtc().toIso8601String(),
+                    ...payload,
+                  },
+                  options: options,
+                );
+              } else {
+                rethrow;
+              }
+            }
+            break;
+
+          default:
+            // Custom or unrecognized operation type
+            break;
+        }
+
+        // 2xx success: delete outbox row and clear local dirty flag
+        await db.syncOutboxDao.markCompleted(
+          op.id,
+          entityType: op.entityType,
+          entityId: op.entityId,
+        );
+      } catch (e) {
+        final statusCode = (e is DioException) ? e.response?.statusCode : null;
+        if (statusCode != null &&
+            statusCode >= 400 &&
+            statusCode < 500 &&
+            statusCode != 401) {
+          // Permanent 4xx client/validation error (e.g. 400, 422, 409):
+          // Record error and mark failed so subsequent FIFO operations are not blocked.
+          await db.syncOutboxDao.markFailed(op.id, e.toString());
+          continue;
+        } else {
+          // Network, connection timeout, 5xx server error or 401 auth:
+          // Mark failed and break push loop to preserve strict FIFO.
+          await db.syncOutboxDao.markFailed(op.id, e.toString());
+          break;
+        }
+      }
+    }
+  }
+
+  /// Pulls the latest plans, members, attendance, and payments from backend.
+  Future<void> pullLatestState() async {
+    // 1. Pull Plans
+    try {
+      final plansRes = await dio.get('/api/plans');
+      final data = plansRes.data;
+      if (data is List) {
+        final companions = data.map((item) {
+          final map = item as Map<String, dynamic>;
+          return LocalPlansCompanion.insert(
+            id: map['id']?.toString() ?? '',
+            name: map['name']?.toString() ?? '',
+            price: (map['price'] as num?)?.toDouble() ?? 0.0,
+            durationDays: (map['durationInDays'] as num?)?.toInt() ?? 30,
+            isActive: Value(map['isActive'] as bool? ?? true),
+            updatedAt: DateTime.now(),
+          );
+        }).toList();
+        await db.plansDao.replaceAllPlans(companions);
+      }
+    } catch (_) {}
+
+    // 2. Pull Members (preserving local rows where isDirty == true)
+    try {
+      final membersRes = await dio.get(
+        '/api/gym/members',
+        queryParameters: {'pageSize': 100},
+      );
+      final data = membersRes.data;
+      final items = (data is Map<String, dynamic> && data['items'] is List)
+          ? data['items'] as List
+          : (data is List ? data : <dynamic>[]);
+
+      final companions = items.map((m) {
+        final map = m as Map<String, dynamic>;
+        final endDateStr = map['subscriptionEndDate']?.toString();
+        final isActive =
+            map['subscriptionStatus']?.toString().toLowerCase() == 'active';
+        return LocalMembersCompanion.insert(
+          id: map['id']?.toString() ?? '',
+          fullName: map['fullName']?.toString() ?? '',
+          phone: map['phoneNumber']?.toString() ?? '',
+          planName: Value(map['activePlanName']?.toString()),
+          subscriptionEndDate: Value(
+            endDateStr != null ? DateTime.tryParse(endDateStr) : null,
+          ),
+          status: Value(isActive ? 1 : 0),
+          updatedAt: DateTime.now(),
+          isDirty: const Value(false),
+        );
+      }).toList();
+
+      await db.membersDao.upsertMembersFromServer(companions);
+    } catch (_) {}
+
+    // 3. Pull Current Inside Attendance
+    try {
+      final attRes = await dio.get('/api/attendance/current-inside');
+      final data = attRes.data;
+      if (data is List) {
+        final companions = data.map((item) {
+          final map = item as Map<String, dynamic>;
+          final rawDate = map['checkInTime'];
+          DateTime checkIn = DateTime.now();
+          if (rawDate != null) {
+            final parsed = DateTime.tryParse(rawDate.toString());
+            if (parsed != null) {
+              checkIn = parsed.isUtc
+                  ? parsed.toLocal()
+                  : (DateTime.tryParse('${rawDate}Z')?.toLocal() ?? parsed);
+            }
+          }
+          return LocalAttendanceCompanion.insert(
+            id: map['recordId']?.toString() ?? map['id']?.toString() ?? '',
+            memberId: Value(map['memberId']?.toString()),
+            memberName:
+                map['fullName']?.toString() ?? map['memberName']?.toString() ?? '',
+            memberPhone: Value(map['phoneNumber']?.toString()),
+            checkInTime: checkIn,
+            isDirty: const Value(false),
+          );
+        }).toList();
+
+        await db.attendanceDao.upsertAttendanceFromServer(companions);
+      }
+    } catch (_) {}
+
+    // 4. Pull Recent Payments
+    try {
+      final payRes = await dio.get(
+        '/api/payments',
+        queryParameters: {'period': 'month'},
+      );
+      final data = payRes.data;
+      if (data is Map<String, dynamic> && data['items'] is List) {
+        final items = data['items'] as List;
+        final companions = items.map((item) {
+          final map = item as Map<String, dynamic>;
+          final rawDate = map['paymentDate'];
+          DateTime createdAt = DateTime.now();
+          if (rawDate != null) {
+            final parsed = DateTime.tryParse(rawDate.toString());
+            if (parsed != null) createdAt = parsed;
+          }
+          int methodInt = 1;
+          final rawMethod = map['method'];
+          if (rawMethod is int) {
+            methodInt = rawMethod;
+          } else if (rawMethod is String) {
+            switch (rawMethod.toLowerCase()) {
+              case 'visa':
+                methodInt = 2;
+                break;
+              case 'instapay':
+                methodInt = 3;
+                break;
+              case 'vodafonecash':
+                methodInt = 4;
+                break;
+              default:
+                methodInt = 1;
+                break;
+            }
+          }
+          return LocalPaymentsCompanion.insert(
+            id: map['id']?.toString() ?? '',
+            memberName: Value(map['memberName']?.toString()),
+            planId: Value(map['planId']?.toString()),
+            amountPaid: (map['amount'] as num?)?.toDouble() ?? 0.0,
+            method: methodInt,
+            type: 1,
+            createdAt: createdAt,
+            isDirty: const Value(false),
+          );
+        }).toList();
+
+        await db.paymentsDao.upsertPaymentsFromServer(companions);
+      }
+    } catch (_) {}
+  }
+
+  void dispose() {
+    _pendingSubscription?.cancel();
+    _connectivitySubscription?.cancel();
+    _stateController.close();
+  }
+}
+
+/// Automatically triggers sync cycles on app resume, network recovery, and periodic timer.
+class SyncLifecycleObserver with WidgetsBindingObserver {
+  final SyncEngine _engine;
+  final Connectivity _connectivity;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  Timer? _periodicTimer;
+
+  SyncLifecycleObserver(this._engine, this._connectivity);
+
+  void start() {
+    WidgetsBinding.instance.addObserver(this);
+
+    _connectivitySubscription =
+        _connectivity.onConnectivityChanged.listen((results) {
+      final isOnline = results.any((r) => r != ConnectivityResult.none);
+      if (isOnline) {
+        _engine.syncNow();
+      }
+    });
+
+    // Foreground periodic sync every 2 minutes
+    _periodicTimer = Timer.periodic(const Duration(minutes: 2), (_) {
+      _engine.syncNow();
+    });
+
+    // Initial startup sync attempt
+    _engine.syncNow();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _engine.syncNow();
+    }
+  }
+
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _connectivitySubscription?.cancel();
+    _periodicTimer?.cancel();
+  }
+}

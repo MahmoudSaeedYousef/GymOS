@@ -12,6 +12,7 @@ public interface IGymDbContext
     DbSet<ApplicationUser> Users { get; }
     DbSet<AttendanceRecord> AttendanceRecords { get; }
     DbSet<PaymentRecord> PaymentRecords { get;}
+    DbSet<IdempotencyRecord> IdempotencyRecords { get; }
     DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

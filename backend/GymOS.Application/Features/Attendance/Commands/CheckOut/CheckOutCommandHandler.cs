@@ -19,7 +19,7 @@ public class CheckOutCommandHandler(IGymDbContext context)
         if (record.CheckOutTime != null)
             return new CheckOutResult(false, "تم تسجيل خروج المشترك بالفعل.");
 
-        record.CheckOutTime = DateTime.UtcNow;
+        record.CheckOutTime = request.OccurredAtUtc ?? request.CheckOutTime ?? DateTime.UtcNow;
         await context.SaveChangesAsync(cancellationToken);
 
         return new CheckOutResult(true, "تم تسجيل الخروج بنجاح.");

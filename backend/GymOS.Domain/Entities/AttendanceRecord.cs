@@ -2,7 +2,7 @@ namespace GymOS.Domain.Entities;
 
 public class AttendanceRecord
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; set; } = Guid.CreateVersion7();
     
     // Multi-tenancy
     public string TenantId { get; set; } = string.Empty;

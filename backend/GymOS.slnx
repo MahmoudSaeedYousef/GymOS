@@ -3,4 +3,5 @@
   <Project Path="GymOS.Application/GymOS.Application.csproj" />
   <Project Path="GymOS.Domain/GymOS.Domain.csproj" />
   <Project Path="GymOS.Infrastructure/GymOS.Infrastructure.csproj" />
+  <Project Path="GymOS.Tests/GymOS.Tests.csproj" />
 </Solution>

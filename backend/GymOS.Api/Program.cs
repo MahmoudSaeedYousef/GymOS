@@ -1,5 +1,6 @@
 using System.Text;
 using GymOS.Api.Endpoints;
+using GymOS.Api.Middleware;
 using GymOS.Application.Features.Plans.Commands.CreatePlan;
 using GymOS.Application.Interfaces;
 using GymOS.Domain.Entities;
@@ -67,6 +68,7 @@ using (var scope = app.Services.CreateScope())
 }
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseIdempotency();
 
 app.MapAuthEndpoints();
 app.MapGymEndpoints();

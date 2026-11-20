@@ -22,7 +22,7 @@ public static class AttendanceEndpoints
             if (!result.IsSuccess)
                 return Results.BadRequest(new { Message = result.Message });
 
-            return Results.Ok(new { Message = result.Message });
+            return Results.Ok(new { Message = result.Message, AttendanceId = result.AttendanceId });
         });
         group.MapGet("/current-inside", async (IMediator mediator) =>
         {

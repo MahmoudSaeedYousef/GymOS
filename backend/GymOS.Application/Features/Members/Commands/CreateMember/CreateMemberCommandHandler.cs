@@ -18,7 +18,8 @@ public class CreateMemberCommandHandler(
             ?? throw new UnauthorizedAccessException("Tenant ID is missing.");
 
         Plan? plan = null;
-        var start = request.StartDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var startDateTime = request.OccurredAtUtc ?? request.CreatedAt ?? DateTime.UtcNow;
+        var start = request.StartDate ?? DateOnly.FromDateTime(startDateTime);
         DateOnly? end = null;
         if (request.PlanId.HasValue)
         {
@@ -27,8 +28,15 @@ public class CreateMemberCommandHandler(
             end = start.AddDays(plan.DurationInDays);
         }
 
+        var memberId = (request.Id.HasValue && request.Id.Value != Guid.Empty)
+            ? request.Id.Value
+            : ((request.ClientId.HasValue && request.ClientId.Value != Guid.Empty)
+                ? request.ClientId.Value
+                : Guid.CreateVersion7());
+
         var member = new ApplicationUser
         {
+            Id = memberId.ToString(),
             UserName = $"{tenantId}_{request.PhoneNumber}",
             PhoneNumber = request.PhoneNumber,
             FullName = request.FullName,
@@ -62,7 +70,7 @@ public class CreateMemberCommandHandler(
                 PlanId = plan.Id,
                 Amount = request.AmountPaid ?? plan.Price,
                 Method = request.Method,
-                PaymentDate = DateTime.UtcNow,
+                PaymentDate = startDateTime,
                 IsDropIn = false,
                 Notes = "اشتراك عضو جديد"
             });
