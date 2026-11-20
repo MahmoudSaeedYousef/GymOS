@@ -1,6 +1,7 @@
 using GymOS.Application.Features.Visits.DTOs;
 using GymOS.Domain.Enums;
 using MediatR;
+
 namespace GymOS.Application.Features.Visits.Commands.RecordDropInVisit;
 
 public record RecordDropInVisitCommand(
@@ -11,6 +12,10 @@ public record RecordDropInVisitCommand(
     string? GuestName,
     string? GuestPhone,
     string? Notes,
- PaymentMethod Method
-
+    PaymentMethod Method,
+    Guid? Id = null,
+    Guid? ClientId = null,
+    DateTime? OccurredAtUtc = null,
+    DateTime? CreatedAt = null,
+    Guid? AttendanceId = null
 ) : IRequest<DropInVisitResult>;

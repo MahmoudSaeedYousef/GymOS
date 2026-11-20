@@ -3,4 +3,10 @@ using MediatR;
 
 namespace GymOS.Application.Features.Attendance.Commands.CheckIn;
 
-public record CheckInCommand(string Id, string? Notes = null) : IRequest<CheckInResult>;
+public record CheckInCommand(
+    string? Id = null,
+    string? Notes = null,
+    Guid? ClientId = null,
+    string? MemberId = null,
+    DateTime? OccurredAtUtc = null,
+    DateTime? CheckInTime = null) : IRequest<CheckInResult>;

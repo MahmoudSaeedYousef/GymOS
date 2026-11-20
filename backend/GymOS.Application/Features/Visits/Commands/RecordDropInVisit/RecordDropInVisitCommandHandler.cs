@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GymOS.Application.Features.Visits.Commands.RecordDropInVisit;
 
-
 public class RecordDropInVisitCommandHandler(
     IGymDbContext context,
     ICurrentTenantService currentTenantService)
@@ -55,8 +54,20 @@ public class RecordDropInVisitCommandHandler(
         if (finalAmount <= 0)
             return new DropInVisitResult(false, "يرجى تحديد سعر صالح للحصة أو إنشاء باقة حصة مفردة.");
 
-        var now = DateTime.UtcNow;
+        var now = request.OccurredAtUtc ?? request.CreatedAt ?? DateTime.UtcNow;
         var today = DateOnly.FromDateTime(now);
+
+        var paymentId = (request.Id.HasValue && request.Id.Value != Guid.Empty)
+            ? request.Id.Value
+            : ((request.ClientId.HasValue && request.ClientId.Value != Guid.Empty)
+                ? request.ClientId.Value
+                : Guid.CreateVersion7());
+
+        var attendanceId = (request.AttendanceId.HasValue && request.AttendanceId.Value != Guid.Empty)
+            ? request.AttendanceId.Value
+            : (request.ClientId.HasValue && request.Id.HasValue && request.ClientId.Value != request.Id.Value
+                ? request.ClientId.Value
+                : Guid.CreateVersion7());
 
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         try
@@ -124,7 +135,7 @@ public class RecordDropInVisitCommandHandler(
             // 6. تسجيل الحضور الفوري (يسمّع في "المتواجدين الآن" و"حضور اليوم")
             var attendance = new AttendanceRecord
             {
-                Id = Guid.CreateVersion7(),
+                Id = attendanceId,
                 TenantId = tenantIdString!,
                 MemberId = member.Id,
                 CheckInTime = now,
@@ -135,7 +146,7 @@ public class RecordDropInVisitCommandHandler(
             // 7. تسجيل الدفعة في الـ Ledger
             var payment = new PaymentRecord
             {
-                Id = Guid.CreateVersion7(),
+                Id = paymentId,
                 TenantId = tenantIdString!,
                 MemberId = member.Id,
                 PlanId = dropInPlan.Id,

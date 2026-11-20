@@ -1,6 +1,9 @@
 using GymOS.Application.Features.Attendance.DTOs;
+using MediatR;
 
 namespace GymOS.Application.Features.Attendance.Commands.CheckOut;
 
-using MediatR;
-public record CheckOutCommand(Guid RecordId) : IRequest<CheckOutResult>;
+public record CheckOutCommand(
+    Guid RecordId,
+    DateTime? OccurredAtUtc = null,
+    DateTime? CheckOutTime = null) : IRequest<CheckOutResult>;

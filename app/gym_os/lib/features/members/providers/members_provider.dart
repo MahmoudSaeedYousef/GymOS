@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import '../../../core/database/daos/members_dao.dart';
+import '../../../core/database/database_provider.dart';
 import '../models/member_filter.dart';
 import '../models/member_model.dart';
 import '../models/member_sort_option.dart';
@@ -81,10 +83,38 @@ class MembersState {
 // 3. الـ Notifier المسؤول عن إدارة البحث والـ Pagination والإضافة والفلترة والترتيب
 class MembersNotifier extends StateNotifier<MembersState> {
   final GymApiService _apiService;
+  final MembersDao? _membersDao;
   Timer? _debounceTimer;
+  StreamSubscription? _membersSubscription;
 
-  MembersNotifier(this._apiService) : super(const MembersState()) {
+  MembersNotifier(this._apiService, [this._membersDao])
+      : super(const MembersState()) {
+    _initStream();
     loadInitial();
+  }
+
+  void _initStream() {
+    if (_membersDao == null) return;
+    _membersSubscription = _membersDao.watchAllMembers().listen((list) {
+      if (list.isNotEmpty &&
+          state.searchQuery.isEmpty &&
+          state.selectedFilter == MemberFilter.all) {
+        final models = list
+            .map((m) => MemberModel(
+                  id: m.id,
+                  fullName: m.fullName,
+                  phoneNumber: m.phone,
+                  activePlanName: m.planName,
+                  subscriptionEndDate:
+                      m.subscriptionEndDate?.toIso8601String(),
+                  subscriptionStatus:
+                      m.status == 1 ? 'active' : 'expired',
+                ))
+            .toList();
+
+        state = state.copyWith(members: models);
+      }
+    });
   }
 
   // تحميل أول صفحة (أو إعادة التحميل بعد البحث / الفلترة / الترتيب / الإضافة)
@@ -188,6 +218,7 @@ class MembersNotifier extends StateNotifier<MembersState> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _membersSubscription?.cancel();
     super.dispose();
   }
 }
@@ -195,6 +226,7 @@ class MembersNotifier extends StateNotifier<MembersState> {
 // 4. الـ Provider العام للمشتركين
 final membersProvider =
     StateNotifierProvider<MembersNotifier, MembersState>((ref) {
-      final apiService = ref.watch(gymApiServiceProvider);
-      return MembersNotifier(apiService);
-    });
+  final apiService = ref.watch(gymApiServiceProvider);
+  final membersDao = ref.watch(membersDaoProvider);
+  return MembersNotifier(apiService, membersDao);
+});

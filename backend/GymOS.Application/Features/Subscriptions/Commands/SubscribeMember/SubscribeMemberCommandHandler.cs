@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GymOS.Application.Features.Subscriptions.Commands.SubscribeMember;
 
-
 public class SubscribeMemberCommandHandler(IGymDbContext context, ICurrentTenantService tenantService)
     : IRequestHandler<SubscribeMemberCommand, Guid>
 {
@@ -17,8 +16,15 @@ public class SubscribeMemberCommandHandler(IGymDbContext context, ICurrentTenant
         var plan = await context.Plans.FirstOrDefaultAsync(p => p.Id == request.PlanId, cancellationToken)
                    ?? throw new KeyNotFoundException("Plan not found.");
 
+        var subId = (request.Id.HasValue && request.Id.Value != Guid.Empty)
+            ? request.Id.Value
+            : ((request.ClientId.HasValue && request.ClientId.Value != Guid.Empty)
+                ? request.ClientId.Value
+                : Guid.CreateVersion7());
+
         var subscription = new Subscription
         {
+            Id = subId,
             TenantId = new Guid(tenantId),
             MemberId = request.MemberId,
             PlanId = plan.Id,

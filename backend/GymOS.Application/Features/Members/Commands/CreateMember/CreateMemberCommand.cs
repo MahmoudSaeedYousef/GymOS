@@ -9,4 +9,8 @@ public record CreateMemberCommand(
     Guid? PlanId,
     DateOnly? StartDate,
     PaymentMethod Method = PaymentMethod.Cash,
-    decimal? AmountPaid = null) : IRequest<string>;
+    decimal? AmountPaid = null,
+    Guid? Id = null,
+    Guid? ClientId = null,
+    DateTime? OccurredAtUtc = null,
+    DateTime? CreatedAt = null) : IRequest<string>;

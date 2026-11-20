@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gym_os/core/sync/sync_provider.dart';
+import 'package:gym_os/core/sync/sync_status_pill.dart';
 import 'package:gym_os/core/ui/animated_counter.dart';
 import 'package:gym_os/core/ui/atoms/gym_card.dart';
 import 'package:gym_os/core/ui/gym_ambient_background.dart';
@@ -45,6 +47,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(syncLifecycleObserverProvider);
+    });
     _searchController.addListener(() {
       final text = _searchController.text.trim();
       if (_searchQuery != text) {
@@ -886,27 +891,35 @@ class _DashboardHeader extends StatelessWidget {
             ),
           ],
         ),
-        // Notification bell with >= 48dp tap target
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onNotificationTap,
-            borderRadius: BorderRadius.circular(24),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: colors.surfaceLevel2,
-                shape: BoxShape.circle,
-                border: Border.all(color: colors.surfaceBorder),
-              ),
-              child: Icon(
-                Icons.notifications_none_rounded,
-                color: colors.textPrimary,
-                size: 20,
+        // Sync Status Pill + Notification bell with >= 48dp tap target
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SyncStatusPill(),
+            const SizedBox(width: AppSpacing.sm),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onNotificationTap,
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceLevel2,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: colors.surfaceBorder),
+                  ),
+                  child: Icon(
+                    Icons.notifications_none_rounded,
+                    color: colors.textPrimary,
+                    size: 20,
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ],
     );
