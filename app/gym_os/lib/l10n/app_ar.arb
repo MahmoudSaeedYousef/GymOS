@@ -1,0 +1,300 @@
+{
+  "@@locale": "ar",
+  "appTitle": "Gymmy",
+  "currency": "ج.م",
+  "confirm": "تأكيد",
+  "cancel": "إلغاء",
+  "save": "حفظ",
+  "retry": "إعادة المحاولة",
+  "refresh": "تحديث",
+  "error": "حدث خطأ",
+  "errorWithMessage": "حدث خطأ: {error}",
+  "@errorWithMessage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "navDashboard": "الرئيسية",
+  "navMembers": "المشتركين",
+  "navSettings": "الإعدادات",
+
+  "loginTitle": "Gymmy",
+  "loginSubtitle": "سجل دخول لإدارة صالتك الرياضية",
+  "phoneNumber": "رقم الموبايل",
+  "phoneHint": "أدخل رقم الموبايل المسجل",
+  "phoneRequired": "مطلوب إدخال رقم الموبايل",
+  "password": "كلمة المرور",
+  "passwordHint": "••••••••",
+  "passwordRequired": "مطلوب إدخال كلمة المرور",
+  "loginButton": "تسجيل الدخول",
+  "invalidPhoneOrPassword": "رقم الهاتف أو كلمة المرور غير صحيحة",
+  "welcomeToGymOS": "أهلاً بك في Gymmy",
+  "loginSuccess": "تم تسجيل الدخول بنجاح",
+
+  "goodMorningCaptain": "صباح الخير، يا كابتن 👋",
+  "gymOverview": "نظرة عامة على الجيم",
+  "currentlyInGym": "متواجد في الجيم الآن",
+  "tapToViewAndCheckout": "اضغط لعرض القائمة وتسجيل الخروج",
+  "activeMembers": "اشتراكات سارية",
+  "todayCheckIns": "حضور اليوم",
+  "expiredSubscriptions": "اشتراكات منتهية",
+  "monthlyRevenue": "إيرادات الشهر",
+  "errorLoadingStats": "خطأ في تحميل الإحصائيات: {error}",
+  "@errorLoadingStats": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActions": "إجراءات سريعة",
+  "newMember": "عضو جديد",
+  "renewPlan": "تجديد باقة",
+  "checkIn": "تسجيل حضور",
+  "quickCheckIn": "تسجيل حضور سريع",
+  "checkingIn": "جاري تسجيل الحضور...",
+  "checkInSuccess": "تم تسجيل الحضور بنجاح",
+  "recentMembers": "أحدث المشتركين",
+  "viewAll": "عرض الكل",
+  "noMembersYet": "لا يوجد مشتركين بعد",
+  "memberUnit": "عضو",
+  "heroBadge": "بطل",
+
+  "currentInsideTitle": "المتواجدون في الجيم الآن",
+  "noMembersInside": "لا يوجد أعضاء متواجدون حالياً",
+  "realtimeGateUpdate": "يتم التحديث لحظياً عند تسجيل الدخول من البوابة",
+  "checkOut": "تسجيل خروج",
+  "checkOutSuccess": "تم تسجيل الخروج بنجاح",
+  "timeJustNow": "الآن",
+  "timeMinutesAgo": "منذ {minutes} دقيقة",
+  "@timeMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "timeHoursAgo": "منذ {hours} ساعة",
+  "@timeHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "timeHoursAndMinutesAgo": "منذ {hours} ساعة و {minutes} د",
+  "@timeHoursAndMinutesAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "memberCountBadge": "{count} عضو",
+  "@memberCountBadge": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "membersTitle": "المشتركين",
+  "newMemberButton": "مشترك جديد",
+  "search": "بحث",
+  "searchMemberHint": "اكتب الاسم أو رقم الموبايل...",
+  "noMembersFound": "لم يتم العثور على نتائج",
+  "noMembersYetList": "لا يوجد مشتركين حتى الآن",
+  "activeStatus": "نشط",
+  "expiredStatus": "منتهي",
+  "filterAll": "الكل",
+  "filterActive": "سارية",
+  "filterExpired": "منتهية",
+  "filterTodayAttendance": "حضور اليوم",
+  "expiresOn": "ينتهي {date}",
+  "@expiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+
+  "memberProfileTitle": "ملف المشترك",
+  "activeSubscription": "اشتراك نشط",
+  "expiredSubscription": "اشتراك منتهي",
+  "subscriptionDetails": "تفاصيل الاشتراك",
+  "plan": "الباقة",
+  "noPlan": "لا توجد باقة",
+  "endDate": "تاريخ الانتهاء",
+  "recordAttendance": "تسجيل الحضور",
+  "renewSubscription": "تجديد الاشتراك",
+
+  "addNewMemberTitle": "إضافة مشترك جديد",
+  "enterMemberDataHint": "أدخل بيانات المشترك لتفعيل الحساب",
+  "fullName": "الاسم بالكامل",
+  "fullNameHint": "مثال: محمود سعيد",
+  "nameRequired": "مطلوب إدخال الاسم",
+  "phoneInvalid": "أدخل رقم صحيح",
+  "planOptional": "الباقة (اختياري)",
+  "chooseImmediatePlan": "اختر باقة التفعيل الفوري...",
+  "failedToLoadPlans": "تعذر تحميل الباقات",
+  "saveAndActivate": "حفظ وتفعيل الاشتراك",
+  "memberAddedSuccess": "تم إضافة المشترك بنجاح ✅",
+
+  "renewSubscriptionFor": "تجديد اشتراك: {memberName}",
+  "@renewSubscriptionFor": {
+    "placeholders": {
+      "memberName": {
+        "type": "String"
+      }
+    }
+  },
+  "selectPlanToRenew": "اختر الباقة المراد تجديدها...",
+  "paymentMethod": "طريقة الدفع",
+  "amountPaid": "المبلغ المدفوع ({currency})",
+  "@amountPaid": {
+    "placeholders": {
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "notesOptional": "ملاحظات (اختياري)",
+  "notesHint": "مثال: محول على إنستاباي رقم كذا",
+  "confirmPaymentAndRenew": "تأكيد الدفع والتجديد",
+  "pleaseSelectPlan": "برجاء اختيار الباقة",
+  "pleaseEnterValidAmount": "برجاء إدخال مبلغ صحيح",
+
+  "paymentCash": "كاش",
+  "paymentVisa": "فيزا",
+  "paymentInstaPay": "إنستاباي",
+  "paymentVodafoneCash": "فودافون كاش",
+  "paymentOther": "أخرى",
+
+  "searchForMember": "ابحث عن مشترك",
+  "nameOrPhoneHint": "الاسم أو رقم الموبايل...",
+  "noMembersMatched": "لم يتم العثور على مشتركين",
+
+  "settingsTitle": "الإعدادات",
+  "appCustomization": "تخصيص التطبيق",
+  "darkMode": "الوضع الداكن",
+  "language": "اللغة (Language)",
+  "languageArabic": "العربية",
+  "languageEnglish": "English",
+  "account": "الحساب",
+  "logout": "تسجيل الخروج",
+
+  "managePlans": "إدارة الباقات",
+  "managePlansAndSubscriptions": "إدارة الباقات والاشتراكات",
+  "addPlan": "إضافة باقة",
+  "editPlan": "تعديل الباقة",
+  "planName": "اسم الباقة",
+  "planNameHint": "مثال: اشتراك شهري، 3 شهور...",
+  "planNameRequired": "مطلوب إدخال اسم الباقة",
+  "planDescriptionOptional": "الوصف (اختياري)",
+  "planDescriptionHint": "تفاصيل إضافية عن الباقة أو المميزات...",
+  "planPrice": "سعر الباقة ({currency})",
+  "@planPrice": {
+    "placeholders": {
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "planPriceRequired": "مطلوب إدخال سعر صحيح",
+  "durationInDays": "المدة بالأيام",
+  "durationRequired": "مطلوب إدخال عدد الأيام",
+  "activePlan": "نشطة",
+  "inactivePlan": "غير نشطة",
+  "noPlansYet": "لا توجد باقات مضافة بعد",
+  "savePlan": "حفظ الباقة",
+  "planSavedSuccess": "تم حفظ الباقة بنجاح ✅",
+  "durationDays": "{count} يوم",
+  "@durationDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commonDurations": "المدد الشائعة",
+  "days30": "30 يوم (شهر)",
+  "days90": "90 يوم (3 شهور)",
+  "days180": "180 يوم (6 شهور)",
+  "days365": "365 يوم (سنة)",
+  "planStatusUpdated": "تم تحديث حالة الباقة بنجاح",
+  "planPriceFormatted": "{price} {currency}",
+  "@planPriceFormatted": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+
+  "paymentsHistory": "سجل المدفوعات والإيرادات",
+  "totalCollected": "إجمالي المحصل",
+  "periodToday": "اليوم",
+  "periodThisMonth": "هذا الشهر",
+  "periodAllTime": "كل الأوقات",
+  "cashBreakdown": "كاش",
+  "instaPayBreakdown": "إنستاباي",
+  "vodafoneCashBreakdown": "فودافون كاش",
+  "visaBreakdown": "فيزا",
+  "noPaymentsFound": "لا توجد مدفوعات مسجلة",
+  "registerBreakdown": "تفاصيل الخزينة",
+
+  "sendWhatsappReminder": "تذكير واتساب",
+  "whatsappRenewalMessage": "أهلاً كابتن {memberName} 💪، بنفكرك إن اشتراكك في الجيم انتهى. مستنيينك تنورنا لتجديد الباقة وتكمل تمرينك!",
+  "@whatsappRenewalMessage": {
+    "placeholders": {
+      "memberName": {
+        "type": "String"
+      }
+    }
+  },
+  "whatsappLaunchError": "تعذر فتح واتساب على هذا الجهاز",
+
+  "sortBy": "ترتيب حسب",
+  "sortNewest": "الأحدث اشتراكاً",
+  "sortExpiringSoon": "الأقرب للانتهاء",
+  "sortEndDateDesc": "تاريخ الانتهاء (الأبعد)",
+  "sortNameAsc": "الاسم (أ - ي)",
+  "sortByPlan": "الباقة",
+  "sortLastCheckIn": "آخر حضور",
+  "splashTagline": "إدارة ذكية للجيم",
+  "operations": "العمليات",
+  "overview": "نظرة عامة",
+  "searchByNameOrPhone": "البحث بالاسم أو الهاتف...",
+  "latestMembers": "أحدث المشتركين",
+  "revenueSummary": "ملخص الإيرادات",
+  "checkInMember": "تسجيل حضور",
+  "appLogoSemanticLabel": "شعار جيمي",
+  "todayRevenue": "إيراد اليوم",
+  "includesDropIns": "منها حصص مفردة: {amount}",
+  "@includesDropIns": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "dropInSession": "حصة مفردة",
+  "dropInSessionTitle": "تسجيل حصة مفردة",
+  "guestNameOptional": "اسم الزائر (اختياري)",
+  "guestPhoneOptional": "رقم الهاتف (اختياري)",
+  "recordAndCheckIn": "تسجيل الحصة والدخول",
+  "dropInSuccess": "تم تسجيل الحصة والدخول بنجاح ✅",
+  "amountRequired": "يرجى إدخال مبلغ صالح",
+  "dropInNotesOptional": "ملاحظات (اختياري)"
+}

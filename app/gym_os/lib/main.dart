@@ -37,7 +37,8 @@ class GymOSApp extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
-      title: 'GymOS',
+      title: 'Gymmy',
+      onGenerateTitle: (context) => AppLocalizations.of(context)?.appTitle ?? 'Gymmy',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme(),
       darkTheme: AppTheme.darkTheme(),
