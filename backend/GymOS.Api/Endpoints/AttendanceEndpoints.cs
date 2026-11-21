@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using GymOS.Application.Features.Attendance.Commands.CheckIn;
 using GymOS.Application.Features.Attendance.Commands.CheckOut;
 using GymOS.Application.Features.Attendance.Queries.GetCurrentInside; // الـ using من الـ Application Layer
+using GymOS.Application.Features.Attendance.Queries.GetAttendanceHistory;
 
 namespace GymOS.Api.Endpoints;
 
@@ -24,6 +25,13 @@ public static class AttendanceEndpoints
 
             return Results.Ok(new { Message = result.Message, AttendanceId = result.AttendanceId });
         });
+
+        group.MapGet("/", async (DateTime? startDate, DateTime? endDate, IMediator mediator) =>
+        {
+            var result = await mediator.Send(new GetAttendanceHistoryQuery(startDate, endDate));
+            return Results.Ok(result);
+        });
+
         group.MapGet("/current-inside", async (IMediator mediator) =>
         {
             var result = await mediator.Send(new GetCurrentInsideQuery());

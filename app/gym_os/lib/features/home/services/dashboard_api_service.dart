@@ -28,6 +28,67 @@ class DashboardApiService {
   DashboardApiService(this._dio, [this._db, this._syncEngine]);
 
   Future<DashboardStatsModel> getStats() async {
+    // Return live stats from local Drift DB if available (local source of truth)
+    if (_db != null) {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+      final monthStart = DateTime(now.year, now.month, 1);
+      final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59, 999);
+
+      final allMembers = await (_db.select(_db.localMembers)).get();
+      final activeCount = allMembers.where((m) => m.status == 1).length;
+      final expiredCount = allMembers.where((m) => m.status != 1).length;
+
+      final todayAttendance = await (_db.select(_db.localAttendance)
+            ..where((t) =>
+                t.checkInTime.isBiggerOrEqualValue(todayStart) &
+                t.checkInTime.isSmallerOrEqualValue(todayEnd)))
+          .get();
+      final todayCheckIns = todayAttendance.length;
+
+      final currentlyInsideList = await (_db.select(_db.localAttendance)
+            ..where((t) => t.checkOutTime.isNull()))
+          .get();
+      final currentInside = currentlyInsideList.length;
+
+      final monthPayments = await (_db.select(_db.localPayments)
+            ..where((t) =>
+                t.createdAt.isBiggerOrEqualValue(monthStart) &
+                t.createdAt.isSmallerOrEqualValue(monthEnd)))
+          .get();
+      final monthlyRevenue = monthPayments.fold<double>(
+        0.0,
+        (sum, p) => sum + p.amountPaid,
+      );
+
+      final todayPayments = await (_db.select(_db.localPayments)
+            ..where((t) =>
+                t.createdAt.isBiggerOrEqualValue(todayStart) &
+                t.createdAt.isSmallerOrEqualValue(todayEnd)))
+          .get();
+      final todayRevenue = todayPayments.fold<double>(
+        0.0,
+        (sum, p) => sum + p.amountPaid,
+      );
+
+      final monthDropIns = monthPayments.where((p) => p.type == 2);
+      final monthlyDropInRevenue = monthDropIns.fold<double>(
+        0.0,
+        (sum, p) => sum + p.amountPaid,
+      );
+
+      return DashboardStatsModel(
+        activeMembersCount: activeCount,
+        expiredSubscriptionsCount: expiredCount,
+        todayCheckInsCount: todayCheckIns,
+        monthlyRevenue: monthlyRevenue,
+        currentInside: currentInside,
+        todayRevenue: todayRevenue,
+        monthlyDropInRevenue: monthlyDropInRevenue,
+      );
+    }
+
     try {
       final response = await _dio.get('/api/dashboard/stats');
       if (response.data is Map<String, dynamic>) {

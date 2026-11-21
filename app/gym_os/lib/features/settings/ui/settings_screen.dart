@@ -50,6 +50,88 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     }
   }
 
+  Future<void> _handleSignOut(BuildContext context) async {
+    final l10n = context.l10n;
+    final colors = context.gymColors;
+    final db = ref.read(appDatabaseProvider);
+    final pendingCount = await db.syncOutboxDao.getPendingCount();
+
+    if (!context.mounted) return;
+
+    final shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          icon: Icon(
+            Icons.warning_amber_rounded,
+            color: colors.expired,
+            size: 32,
+          ),
+          title: Text(l10n.signOutConfirmationTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.signOutConfirmationMessage),
+              if (pendingCount > 0) ...[
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: colors.expired.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: colors.expired.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.cloud_off_rounded,
+                        color: colors.expired,
+                        size: 20,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          l10n.signOutUnsyncedWarning(pendingCount),
+                          style: TextStyle(
+                            color: colors.expired,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.expired,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: Text(l10n.logout),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldSignOut == true && context.mounted) {
+      HapticFeedback.mediumImpact();
+      ref.read(authProvider.notifier).logout();
+    }
+  }
+
   Future<void> _populate30DayDemoData() async {
     if (_isPopulatingDemoData) return;
 
@@ -412,9 +494,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 GymButton(
                   label: l10n.logout,
                   icon: Icons.logout_rounded,
-                  onPressed: () {
-                    ref.read(authProvider.notifier).logout();
-                  },
+                  onPressed: () => _handleSignOut(context),
                 ),
               ],
             ),

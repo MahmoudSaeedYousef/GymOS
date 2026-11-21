@@ -649,4 +649,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get expiringSoonStatus => 'Expiring Soon';
+
+  @override
+  String get signOutConfirmationTitle => 'Sign Out';
+
+  @override
+  String get signOutConfirmationMessage => 'Are you sure you want to sign out?';
+
+  @override
+  String signOutUnsyncedWarning(int count) {
+    return 'Warning: You have $count unsynced local records. You may lose this data if you sign out now.';
+  }
+
+  @override
+  String get pressBackAgainToExit => 'Press back again to exit';
+
+  @override
+  String get discardChangesTitle => 'Discard Changes';
+
+  @override
+  String get discardChangesMessage =>
+      'Are you sure you want to discard your changes? Any entered data will be lost.';
+
+  @override
+  String get discard => 'Discard';
+
+  @override
+  String get keepEditing => 'Keep Editing';
 }

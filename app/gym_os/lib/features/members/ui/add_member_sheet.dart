@@ -4,8 +4,7 @@ import 'package:gym_os/core/l10n/l10n_extension.dart';
 import 'package:gym_os/core/theme/app_theme.dart';
 import 'package:gym_os/core/ui/atoms/gym_button.dart';
 import 'package:gym_os/core/ui/atoms/gym_text_field.dart';
-import 'package:gym_os/features/home/providers/dashboard_provider.dart';
-import 'package:gym_os/features/payments/providers/payments_provider.dart';
+import 'package:gym_os/features/payments/services/payment_api_service.dart';
 import 'package:gym_os/l10n/app_localizations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../models/plan_model.dart';
@@ -26,6 +25,49 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
   String? _selectedPlanId;
   PaymentMethod _selectedPaymentMethod = PaymentMethod.cash;
   bool _isSubmitting = false;
+
+  bool get _isDirty {
+    return _nameController.text.trim().isNotEmpty ||
+        _phoneController.text.trim().isNotEmpty ||
+        _amountController.text.trim().isNotEmpty ||
+        _selectedPlanId != null;
+  }
+
+  Future<bool> _confirmDiscardIfNeeded() async {
+    if (!_isDirty) return true;
+
+    final l10n = context.l10n;
+    final shouldDiscard = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          icon: const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 32,
+          ),
+          title: Text(l10n.discardChangesTitle),
+          content: Text(l10n.discardChangesMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: Text(l10n.keepEditing),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: Text(l10n.discard),
+            ),
+          ],
+        );
+      },
+    );
+
+    return shouldDiscard ?? false;
+  }
 
   @override
   void dispose() {
@@ -53,8 +95,6 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
             method: planChosen ? _selectedPaymentMethod.value : null,
             amountPaid: amount,
           );
-      ref.invalidate(dashboardStatsProvider);
-      ref.invalidate(paymentsSummaryProvider);
       ref.read(membersProvider.notifier).resetFilters();
       if (mounted) {
         final colors = context.gymColors;
@@ -94,8 +134,17 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      decoration: BoxDecoration(
+    return PopScope(
+      canPop: !_isDirty,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldDiscard = await _confirmDiscardIfNeeded();
+        if (shouldDiscard && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
         color: colors.surfaceBackground,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -328,7 +377,8 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildPaymentMethodSelector(

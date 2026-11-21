@@ -88,7 +88,7 @@ class SyncEngine {
       _emitState();
 
       if (wasOffline && online) {
-        syncNow();
+        syncAll();
       }
     });
 
@@ -111,9 +111,49 @@ class SyncEngine {
     }
   }
 
+  /// Checks actual network reachability with a 2-second timeout.
+  Future<bool> checkReachability() async {
+    bool online = false;
+    try {
+      final connectivityResults = await connectivity
+          .checkConnectivity()
+          .timeout(const Duration(seconds: 2));
+      online = connectivityResults.any((r) => r != ConnectivityResult.none);
+    } catch (_) {
+      online = false;
+    }
+
+    if (online) {
+      try {
+        final res = await dio
+            .get(
+              '/api/plans',
+              options: Options(
+                sendTimeout: const Duration(seconds: 2),
+                receiveTimeout: const Duration(seconds: 2),
+              ),
+            )
+            .timeout(const Duration(seconds: 2));
+        online = res.statusCode != null && res.statusCode! < 500;
+      } catch (_) {
+        online = false;
+      }
+    }
+
+    _isOnline = online;
+    _emitState();
+    return online;
+  }
+
   /// Full synchronization cycle:
   /// Always pushes pending local outbox operations FIRST, then pulls latest server state SECOND.
-  Future<void> syncNow() async {
+  Future<void> syncNow() => syncAll();
+
+  /// Bidirectional 2-phase sync (Push-then-Pull), atomic & mutex-guarded:
+  /// - Phase 1: Push (Local -> Server) pending operations FIFO.
+  /// - Phase 2: Pull (Server -> Local) fresh plans, members, 30-day attendance,
+  ///   dashboard summary, and payments without overwriting any dirty local rows.
+  Future<void> syncAll() async {
     if (_isSyncing) return;
     _isSyncing = true;
     _emitState();
@@ -127,10 +167,10 @@ class SyncEngine {
         return;
       }
 
-      // Step 1: Push pending mutations FIRST
+      // Phase 1 — Push (Local -> Server)
       await pushPendingOperations();
 
-      // Step 2: Pull latest state from backend SECOND
+      // Phase 2 — Pull (Server -> Local)
       await pullLatestState();
 
       _lastSyncedAt = DateTime.now();
@@ -146,7 +186,7 @@ class SyncEngine {
     }
   }
 
-  /// Dispatches pending outbox operations to backend in strict FIFO order.
+  /// Pushes pending outbox operations to backend with strict 3-second network timeouts.
   Future<void> pushPendingOperations() async {
     final pendingOps = await db.syncOutboxDao.getPendingOperations(limit: 25);
     if (pendingOps.isEmpty) return;
@@ -163,6 +203,8 @@ class SyncEngine {
 
       final options = Options(
         headers: {'X-Idempotency-Key': op.operationId},
+        sendTimeout: const Duration(seconds: 3),
+        receiveTimeout: const Duration(seconds: 3),
       );
 
       try {
@@ -336,9 +378,14 @@ class SyncEngine {
 
   /// Pulls the latest plans, members, attendance, and payments from backend.
   Future<void> pullLatestState() async {
+    final pullOptions = Options(
+      sendTimeout: const Duration(seconds: 3),
+      receiveTimeout: const Duration(seconds: 3),
+    );
+
     // 1. Pull Plans
     try {
-      final plansRes = await dio.get('/api/plans');
+      final plansRes = await dio.get('/api/plans', options: pullOptions);
       final data = plansRes.data;
       if (data is List) {
         final companions = data.map((item) {
@@ -361,6 +408,7 @@ class SyncEngine {
       final membersRes = await dio.get(
         '/api/gym/members',
         queryParameters: {'pageSize': 100},
+        options: pullOptions,
       );
       final data = membersRes.data;
       final items = (data is Map<String, dynamic> && data['items'] is List)
@@ -389,9 +437,68 @@ class SyncEngine {
       await db.membersDao.upsertMembersFromServer(companions);
     } catch (_) {}
 
-    // 3. Pull Current Inside Attendance
+    // 3. Pull Historical Attendance (Last 30 Days) & Current Inside
     try {
-      final attRes = await dio.get('/api/attendance/current-inside');
+      final nowUtc = DateTime.now().toUtc();
+      final thirtyDaysAgoUtc = nowUtc.subtract(const Duration(days: 30));
+
+      final attRes = await dio.get(
+        '/api/attendance',
+        queryParameters: {
+          'startDate': thirtyDaysAgoUtc.toIso8601String(),
+          'endDate': nowUtc.toIso8601String(),
+        },
+        options: pullOptions,
+      );
+      final data = attRes.data;
+      if (data is List) {
+        final companions = data.map((item) {
+          final map = item as Map<String, dynamic>;
+          final rawDate = map['checkInTime'];
+          DateTime checkIn = DateTime.now();
+          if (rawDate != null) {
+            final parsed = DateTime.tryParse(rawDate.toString());
+            if (parsed != null) {
+              checkIn = parsed.isUtc
+                  ? parsed.toLocal()
+                  : (DateTime.tryParse('${rawDate}Z')?.toLocal() ?? parsed);
+            }
+          }
+
+          final rawCheckOut = map['checkOutTime'];
+          DateTime? checkOut;
+          if (rawCheckOut != null) {
+            final parsedOut = DateTime.tryParse(rawCheckOut.toString());
+            if (parsedOut != null) {
+              checkOut = parsedOut.isUtc
+                  ? parsedOut.toLocal()
+                  : (DateTime.tryParse('${rawCheckOut}Z')?.toLocal() ??
+                      parsedOut);
+            }
+          }
+
+          return LocalAttendanceCompanion.insert(
+            id: map['recordId']?.toString() ?? map['id']?.toString() ?? '',
+            memberId: Value(map['memberId']?.toString()),
+            memberName:
+                map['fullName']?.toString() ?? map['memberName']?.toString() ?? '',
+            memberPhone: Value(map['phoneNumber']?.toString()),
+            checkInTime: checkIn,
+            checkOutTime: Value(checkOut),
+            isDirty: const Value(false),
+          );
+        }).toList();
+
+        await db.attendanceDao.upsertAttendanceFromServer(companions);
+      }
+    } catch (_) {}
+
+    // Fallback/Supplement: Pull Current Inside Attendance if needed
+    try {
+      final attRes = await dio.get(
+        '/api/attendance/current-inside',
+        options: pullOptions,
+      );
       final data = attRes.data;
       if (data is List) {
         final companions = data.map((item) {
@@ -426,6 +533,7 @@ class SyncEngine {
       final payRes = await dio.get(
         '/api/payments',
         queryParameters: {'period': 'month'},
+        options: pullOptions,
       );
       final data = payRes.data;
       if (data is Map<String, dynamic> && data['items'] is List) {
@@ -473,6 +581,11 @@ class SyncEngine {
         await db.paymentsDao.upsertPaymentsFromServer(companions);
       }
     } catch (_) {}
+
+    // 5. Pull Dashboard Summary / Stats
+    try {
+      await dio.get('/api/dashboard/stats', options: pullOptions);
+    } catch (_) {}
   }
 
   void dispose() {
@@ -498,23 +611,23 @@ class SyncLifecycleObserver with WidgetsBindingObserver {
         _connectivity.onConnectivityChanged.listen((results) {
       final isOnline = results.any((r) => r != ConnectivityResult.none);
       if (isOnline) {
-        _engine.syncNow();
+        _engine.syncAll();
       }
     });
 
     // Foreground periodic sync every 2 minutes
     _periodicTimer = Timer.periodic(const Duration(minutes: 2), (_) {
-      _engine.syncNow();
+      _engine.syncAll();
     });
 
     // Initial startup sync attempt
-    _engine.syncNow();
+    _engine.syncAll();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _engine.syncNow();
+    if (state == AppLifecycleState.resumed && _engine.isOnline) {
+      _engine.syncAll();
     }
   }
 

@@ -1,0 +1,125 @@
+using GymOS.Application.Features.Dashboard.Queries.GetStats;
+using GymOS.Domain.Entities;
+using GymOS.Tests.Helpers;
+using Xunit;
+
+namespace GymOS.Tests;
+
+public class GetDashboardStatsTests
+{
+    [Fact]
+    public async Task Handle_ReturnsDistinctTodayAttendanceAnd7DayAttendanceBreakdown()
+    {
+        // Arrange
+        var tenantId = Guid.NewGuid();
+        var context = TestDbContextFactory.Create(tenantId.ToString());
+
+        var tenant = new GymTenant
+        {
+            Id = tenantId,
+            Name = "Test Gym",
+            Subdomain = "testgym",
+            DefaultSessionDurationMinutes = 120
+        };
+        context.Tenants.Add(tenant);
+
+        var member1 = new ApplicationUser
+        {
+            Id = "mem1",
+            TenantId = tenantId,
+            FullName = "عضو أول",
+            Type = UserType.Member,
+            SubscriptionEndDate = DateTime.UtcNow.AddDays(30)
+        };
+        var member2 = new ApplicationUser
+        {
+            Id = "mem2",
+            TenantId = tenantId,
+            FullName = "عضو ثان",
+            Type = UserType.Member,
+            SubscriptionEndDate = DateTime.UtcNow.AddDays(10)
+        };
+        context.Users.AddRange(member1, member2);
+
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+
+        // Multiple check-ins today for member1, single check-in for member2
+        var att1 = new AttendanceRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = member1.Id,
+            CheckInTime = today.AddHours(9),
+            CheckOutTime = today.AddHours(10)
+        };
+        var att2 = new AttendanceRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = member1.Id,
+            CheckInTime = today.AddHours(14),
+            CheckOutTime = today.AddHours(15)
+        };
+        var att3 = new AttendanceRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = member2.Id,
+            CheckInTime = today.AddHours(11),
+            CheckOutTime = today.AddHours(12)
+        };
+
+        // Attendance 3 days ago for member1 and member2
+        var attDayMinus3_1 = new AttendanceRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = member1.Id,
+            CheckInTime = today.AddDays(-3).AddHours(10),
+            CheckOutTime = today.AddDays(-3).AddHours(11)
+        };
+        var attDayMinus3_2 = new AttendanceRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = member1.Id, // Same member duplicate on day -3
+            CheckInTime = today.AddDays(-3).AddHours(16),
+            CheckOutTime = today.AddDays(-3).AddHours(17)
+        };
+        var attDayMinus3_3 = new AttendanceRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = member2.Id,
+            CheckInTime = today.AddDays(-3).AddHours(18),
+            CheckOutTime = today.AddDays(-3).AddHours(19)
+        };
+
+        context.AttendanceRecords.AddRange(att1, att2, att3, attDayMinus3_1, attDayMinus3_2, attDayMinus3_3);
+        await context.SaveChangesAsync();
+
+        var handler = new GetDashboardStatsQueryHandler(context);
+
+        // Act
+        var result = await handler.Handle(new GetDashboardStatsQuery(), CancellationToken.None);
+
+        // Assert
+        // Today has 3 attendance records, but only 2 unique members
+        Assert.Equal(2, result.TodayCheckInsCount);
+
+        // 7 days breakdown
+        Assert.NotNull(result.Last7DaysAttendance);
+        Assert.Equal(7, result.Last7DaysAttendance.Count);
+
+        // Today's entry is the last one (index 6)
+        var todayStat = result.Last7DaysAttendance[6];
+        Assert.Equal(DateOnly.FromDateTime(today), todayStat.Date);
+        Assert.Equal(2, todayStat.Count);
+
+        // Day -3 is at index 3
+        var dayMinus3Stat = result.Last7DaysAttendance[3];
+        Assert.Equal(DateOnly.FromDateTime(today.AddDays(-3)), dayMinus3Stat.Date);
+        Assert.Equal(2, dayMinus3Stat.Count); // 2 distinct members despite 3 records
+    }
+}

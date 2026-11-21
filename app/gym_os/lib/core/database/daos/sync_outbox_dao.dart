@@ -32,6 +32,17 @@ class SyncOutboxDao extends DatabaseAccessor<AppDatabase>
     return query.map((row) => row.read(countExp) ?? 0).watchSingle();
   }
 
+  /// Returns the current number of operations pending synchronization.
+  Future<int> getPendingCount() async {
+    final countExp = syncOutbox.id.count();
+    final query = selectOnly(syncOutbox)
+      ..addColumns([countExp])
+      ..where(syncOutbox.status.equals('pending'));
+
+    final row = await query.getSingle();
+    return row.read(countExp) ?? 0;
+  }
+
   /// Returns pending sync operations ordered strictly FIFO by `id` ASC.
   Future<List<SyncOutboxData>> getPendingOperations({int limit = 20}) {
     return (select(syncOutbox)

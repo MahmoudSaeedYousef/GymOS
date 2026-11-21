@@ -7,6 +7,12 @@ import 'sync_engine.dart';
 
 export 'sync_engine.dart' show SyncEngine, SyncState, SyncLifecycleObserver;
 
+/// Backward-compatible alias for [SyncEngine]
+typedef SyncService = SyncEngine;
+
+/// Backward-compatible alias for [syncEngineProvider]
+final syncServiceProvider = syncEngineProvider;
+
 /// Provider for the [Connectivity] instance.
 final connectivityProvider = Provider<Connectivity>((ref) {
   return Connectivity();

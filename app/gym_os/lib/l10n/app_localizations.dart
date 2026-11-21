@@ -1303,6 +1303,54 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'ينتهي قريباً'**
   String get expiringSoonStatus;
+
+  /// No description provided for @signOutConfirmationTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تسجيل الخروج'**
+  String get signOutConfirmationTitle;
+
+  /// No description provided for @signOutConfirmationMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل أنت متأكد من رغبتك في تسجيل الخروج؟'**
+  String get signOutConfirmationMessage;
+
+  /// No description provided for @signOutUnsyncedWarning.
+  ///
+  /// In ar, this message translates to:
+  /// **'تنبيه: يوجد {count} عمليات محلية لم تتم مزامنتها بعد. قد تفقد هذه البيانات في حال تسجيل الخروج الآن.'**
+  String signOutUnsyncedWarning(int count);
+
+  /// No description provided for @pressBackAgainToExit.
+  ///
+  /// In ar, this message translates to:
+  /// **'اضغط مرة أخرى للخروج'**
+  String get pressBackAgainToExit;
+
+  /// No description provided for @discardChangesTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تراجع عن التغييرات'**
+  String get discardChangesTitle;
+
+  /// No description provided for @discardChangesMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل تريد تجاهل التغييرات الحالية؟ ستفقد البيانات التي قمت بإدخالها.'**
+  String get discardChangesMessage;
+
+  /// No description provided for @discard.
+  ///
+  /// In ar, this message translates to:
+  /// **'تجاهل'**
+  String get discard;
+
+  /// No description provided for @keepEditing.
+  ///
+  /// In ar, this message translates to:
+  /// **'متابعة التعديل'**
+  String get keepEditing;
 }
 
 class _AppLocalizationsDelegate

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gym_os/core/ui/atoms/gym_button.dart';
 import 'package:gym_os/core/ui/atoms/gym_text_field.dart';
-import 'package:gym_os/features/home/providers/dashboard_provider.dart';
 import 'package:gym_os/features/members/providers/members_provider.dart';
 import '../../../core/l10n/l10n_extension.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -27,6 +27,48 @@ class _RenewSubscriptionSheetState
   String? _selectedPlanId;
   PaymentMethod _selectedPaymentMethod = PaymentMethod.cash;
   bool _isSubmitting = false;
+
+  bool get _isDirty {
+    return _selectedPlanId != null ||
+        _amountController.text.trim().isNotEmpty ||
+        _notesController.text.trim().isNotEmpty;
+  }
+
+  Future<bool> _confirmDiscardIfNeeded() async {
+    if (!_isDirty) return true;
+
+    final l10n = context.l10n;
+    final shouldDiscard = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          icon: const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 32,
+          ),
+          title: Text(l10n.discardChangesTitle),
+          content: Text(l10n.discardChangesMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: Text(l10n.keepEditing),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: Text(l10n.discard),
+            ),
+          ],
+        );
+      },
+    );
+
+    return shouldDiscard ?? false;
+  }
 
   Future<void> _submit() async {
     if (_selectedPlanId == null) {
@@ -63,9 +105,9 @@ class _RenewSubscriptionSheetState
             notes: _notesController.text.trim(),
           );
 
-      ref.invalidate(dashboardStatsProvider);
       ref.read(membersProvider.notifier).resetFilters();
       if (!mounted) return;
+      HapticFeedback.lightImpact();
       Navigator.pop(context, true); // نقفل الشيت ونبعت true عشان نحدث الشاشة
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -98,8 +140,17 @@ class _RenewSubscriptionSheetState
     final colors = context.gymColors;
     final plansAsync = ref.watch(plansProvider); // جلب الباقات
 
-    return Padding(
-      padding: EdgeInsets.only(
+    return PopScope(
+      canPop: !_isDirty,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldDiscard = await _confirmDiscardIfNeeded();
+        if (shouldDiscard && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Padding(
+        padding: EdgeInsets.only(
         left: AppSpacing.md,
         right: AppSpacing.md,
         top: AppSpacing.md,
@@ -237,6 +288,7 @@ class _RenewSubscriptionSheetState
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }

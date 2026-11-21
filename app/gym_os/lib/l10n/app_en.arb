@@ -260,5 +260,20 @@
   "colorEmerald": "Emerald",
   "colorCrimson": "Crimson",
   "colorViolet": "Violet",
-  "expiringSoonStatus": "Expiring Soon"
+  "expiringSoonStatus": "Expiring Soon",
+  "signOutConfirmationTitle": "Sign Out",
+  "signOutConfirmationMessage": "Are you sure you want to sign out?",
+  "signOutUnsyncedWarning": "Warning: You have {count} unsynced local records. You may lose this data if you sign out now.",
+  "@signOutUnsyncedWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pressBackAgainToExit": "Press back again to exit",
+  "discardChangesTitle": "Discard Changes",
+  "discardChangesMessage": "Are you sure you want to discard your changes? Any entered data will be lost.",
+  "discard": "Discard",
+  "keepEditing": "Keep Editing"
 }
