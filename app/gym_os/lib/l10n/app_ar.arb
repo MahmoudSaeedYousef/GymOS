@@ -108,7 +108,7 @@
   "membersTitle": "المشتركين",
   "newMemberButton": "مشترك جديد",
   "search": "بحث",
-  "searchMemberHint": "اكتب الاسم أو رقم الموبايل...",
+  "searchMemberHint": "ابحث بالاسم أو رقم الموبايل...",
   "noMembersFound": "لم يتم العثور على نتائج",
   "noMembersYetList": "لا يوجد مشتركين حتى الآن",
   "activeStatus": "نشط",
@@ -296,5 +296,66 @@
   "recordAndCheckIn": "تسجيل الحصة والدخول",
   "dropInSuccess": "تم تسجيل الحصة والدخول بنجاح ✅",
   "amountRequired": "يرجى إدخال مبلغ صالح",
-  "dropInNotesOptional": "ملاحظات (اختياري)"
+  "dropInNotesOptional": "ملاحظات (اختياري)",
+  "last7Days": "آخر 7 أيام",
+  "attendance": "الحضور",
+  "revenue": "الإيرادات",
+  "weeklyTotalAttendance": "إجمالي: {count} حضور",
+  "@weeklyTotalAttendance": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "weeklyTotalRevenue": "إجمالي: {amount}",
+  "@weeklyTotalRevenue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "noActivityYet": "لا توجد بيانات بعد",
+  "selectedDaySummary": "{date}: {value}",
+  "@selectedDaySummary": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "syncStatusSynced": "متزامن",
+  "syncStatusSyncing": "جاري المزامنة ({count})",
+  "@syncStatusSyncing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncStatusOffline": "أوفلاين",
+  "syncStatusOfflineWithQueued": "أوفلاين • {count} بالانتظار",
+  "@syncStatusOfflineWithQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncStatusChecking": "جاري التحقق من المزامنة...",
+  "appFont": "خط التطبيق",
+  "fontDefault": "الافتراضي",
+  "fontAzer": "آزر",
+  "fontAlyamama": "اليمامة",
+  "accentColor": "لون التطبيق",
+  "colorRoyalBlue": "أزرق ملكي",
+  "colorEnergyOrange": "برتقالي حيوي",
+  "colorEmerald": "زمردي",
+  "colorCrimson": "قرمزي",
+  "colorViolet": "بنفسجي",
+  "expiringSoonStatus": "ينتهي قريباً"
 }

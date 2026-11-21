@@ -82,3 +82,8 @@ The application strictly enforces official Flutter Localization (`flutter_locali
 *   **ICU Formats & Parameterization:** Always use typed ICU placeholders for numbers, names, and relative times (e.g., `{count}`, `{minutes}`, `{memberName}`).
 *   **Directional Adaptation:** Directional icons (e.g., chevrons, arrows, back buttons) must adapt according to `Directionality.of(context)` (pointing opposite in RTL vs. LTR) or use `Icons.adaptive`.
 *   **State Persistence:** App language is managed via Riverpod `localeProvider` and persisted to local device storage (`SharedPreferences`).
+
+## STRICT CODE PRESERVATION RULES
+- **Minimal Diff Only:** Modify ONLY the exact lines/widgets required for the current task. Never rewrite or reformat untouched sections of a file.
+- **Preserve Manual UI Tweaks:** Treat all existing colors, paddings, font sizes, border radii, icon choices, and widget ordering in the current working tree as intentional user customizations. NEVER revert, "normalize", or override them unless explicitly instructed.
+- **Check `git diff` First:** Before editing any file, inspect `git status` and `git diff` to see uncommitted manual changes made by the user, and preserve 100% of them.

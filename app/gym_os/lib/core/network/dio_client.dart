@@ -7,8 +7,8 @@ final dioProvider = Provider<Dio>((ref) {
     BaseOptions(
       // 10.0.2.2 للـ Android Emulator (ولو iOS Simulator غيرها لـ localhost)
       // baseUrl: 'http://10.0.2.2:5158',
-      // baseUrl: 'http://127.0.0.1:5158',
-      baseUrl: 'https://gym.orderly365.top',
+      baseUrl: 'http://127.0.0.1:5158',
+      // baseUrl: 'https://gym.orderly365.top',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
     ),

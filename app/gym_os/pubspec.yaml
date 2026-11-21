@@ -49,6 +49,7 @@ dependencies:
   uuid: ^4.6.0
   path_provider: ^2.1.6
   connectivity_plus: ^7.3.2
+  lucide_icons_flutter: ^4.0.3
 
 dev_dependencies:
   flutter_test:
@@ -74,6 +75,14 @@ flutter:
 
   assets:
     - assets/icons/app_icon.png
+
+  fonts:
+    - family: Azer
+      fonts:
+        - asset: assets/fonts/Azer-Regular.otf
+    - family: Alyamama
+      fonts:
+        - asset: assets/fonts/Alyamama-Regular.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

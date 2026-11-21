@@ -449,7 +449,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchMemberHint.
   ///
   /// In ar, this message translates to:
-  /// **'اكتب الاسم أو رقم الموبايل...'**
+  /// **'ابحث بالاسم أو رقم الموبايل...'**
   String get searchMemberHint;
 
   /// No description provided for @noMembersFound.
@@ -1165,6 +1165,144 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'ملاحظات (اختياري)'**
   String get dropInNotesOptional;
+
+  /// No description provided for @last7Days.
+  ///
+  /// In ar, this message translates to:
+  /// **'آخر 7 أيام'**
+  String get last7Days;
+
+  /// No description provided for @attendance.
+  ///
+  /// In ar, this message translates to:
+  /// **'الحضور'**
+  String get attendance;
+
+  /// No description provided for @revenue.
+  ///
+  /// In ar, this message translates to:
+  /// **'الإيرادات'**
+  String get revenue;
+
+  /// No description provided for @weeklyTotalAttendance.
+  ///
+  /// In ar, this message translates to:
+  /// **'إجمالي: {count} حضور'**
+  String weeklyTotalAttendance(int count);
+
+  /// No description provided for @weeklyTotalRevenue.
+  ///
+  /// In ar, this message translates to:
+  /// **'إجمالي: {amount}'**
+  String weeklyTotalRevenue(String amount);
+
+  /// No description provided for @noActivityYet.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد بيانات بعد'**
+  String get noActivityYet;
+
+  /// No description provided for @selectedDaySummary.
+  ///
+  /// In ar, this message translates to:
+  /// **'{date}: {value}'**
+  String selectedDaySummary(String date, String value);
+
+  /// No description provided for @syncStatusSynced.
+  ///
+  /// In ar, this message translates to:
+  /// **'متزامن'**
+  String get syncStatusSynced;
+
+  /// No description provided for @syncStatusSyncing.
+  ///
+  /// In ar, this message translates to:
+  /// **'جاري المزامنة ({count})'**
+  String syncStatusSyncing(int count);
+
+  /// No description provided for @syncStatusOffline.
+  ///
+  /// In ar, this message translates to:
+  /// **'أوفلاين'**
+  String get syncStatusOffline;
+
+  /// No description provided for @syncStatusOfflineWithQueued.
+  ///
+  /// In ar, this message translates to:
+  /// **'أوفلاين • {count} بالانتظار'**
+  String syncStatusOfflineWithQueued(int count);
+
+  /// No description provided for @syncStatusChecking.
+  ///
+  /// In ar, this message translates to:
+  /// **'جاري التحقق من المزامنة...'**
+  String get syncStatusChecking;
+
+  /// No description provided for @appFont.
+  ///
+  /// In ar, this message translates to:
+  /// **'خط التطبيق'**
+  String get appFont;
+
+  /// No description provided for @fontDefault.
+  ///
+  /// In ar, this message translates to:
+  /// **'الافتراضي'**
+  String get fontDefault;
+
+  /// No description provided for @fontAzer.
+  ///
+  /// In ar, this message translates to:
+  /// **'آزر'**
+  String get fontAzer;
+
+  /// No description provided for @fontAlyamama.
+  ///
+  /// In ar, this message translates to:
+  /// **'اليمامة'**
+  String get fontAlyamama;
+
+  /// No description provided for @accentColor.
+  ///
+  /// In ar, this message translates to:
+  /// **'لون التطبيق'**
+  String get accentColor;
+
+  /// No description provided for @colorRoyalBlue.
+  ///
+  /// In ar, this message translates to:
+  /// **'أزرق ملكي'**
+  String get colorRoyalBlue;
+
+  /// No description provided for @colorEnergyOrange.
+  ///
+  /// In ar, this message translates to:
+  /// **'برتقالي حيوي'**
+  String get colorEnergyOrange;
+
+  /// No description provided for @colorEmerald.
+  ///
+  /// In ar, this message translates to:
+  /// **'زمردي'**
+  String get colorEmerald;
+
+  /// No description provided for @colorCrimson.
+  ///
+  /// In ar, this message translates to:
+  /// **'قرمزي'**
+  String get colorCrimson;
+
+  /// No description provided for @colorViolet.
+  ///
+  /// In ar, this message translates to:
+  /// **'بنفسجي'**
+  String get colorViolet;
+
+  /// No description provided for @expiringSoonStatus.
+  ///
+  /// In ar, this message translates to:
+  /// **'ينتهي قريباً'**
+  String get expiringSoonStatus;
 }
 
 class _AppLocalizationsDelegate

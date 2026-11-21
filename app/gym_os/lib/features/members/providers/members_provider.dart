@@ -197,6 +197,16 @@ class MembersNotifier extends StateNotifier<MembersState> {
     });
   }
 
+  /// Resets the status filter to [MemberFilter.all] and clears the search query string.
+  void resetFilters() {
+    _debounceTimer?.cancel();
+    state = state.copyWith(
+      selectedFilter: MemberFilter.all,
+      searchQuery: '',
+    );
+    loadInitial();
+  }
+
   // إضافة مشترك جديد وتحديث القائمة
   Future<void> addMember({
     required String fullName,

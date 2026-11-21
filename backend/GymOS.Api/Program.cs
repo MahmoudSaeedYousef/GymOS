@@ -23,6 +23,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ICacheService, InMemoryCacheService>();
+builder.Services.AddScoped<IGymHistorySeeder, GymHistorySeeder>();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["Key"] ?? "GymOSSuperSecretKeyForJwtAuthenticationWhichMustBeAtLeast32Chars!";
@@ -77,5 +78,6 @@ app.MapPaymentsEndpoints();
 app.MapDashboardEndpoints();
 app.MapPlansEndpoints();
 app.MapVisitEndpoints();
+app.MapDevEndpoints();
 
 app.Run();

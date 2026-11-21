@@ -55,6 +55,7 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
           );
       ref.invalidate(dashboardStatsProvider);
       ref.invalidate(paymentsSummaryProvider);
+      ref.read(membersProvider.notifier).resetFilters();
       if (mounted) {
         final colors = context.gymColors;
         Navigator.pop(context);

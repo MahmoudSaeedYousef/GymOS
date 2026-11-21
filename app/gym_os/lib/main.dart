@@ -35,13 +35,21 @@ class GymOSApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
+    final fontOption = ref.watch(appFontProvider);
+    final colorPreset = ref.watch(appColorPresetProvider);
 
     return MaterialApp.router(
       title: 'Gymmy',
       onGenerateTitle: (context) => AppLocalizations.of(context)?.appTitle ?? 'Gymmy',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme(),
-      darkTheme: AppTheme.darkTheme(),
+      theme: AppTheme.lightTheme(
+        tenantPrimaryColor: colorPreset.seedColor,
+        fontFamily: fontOption.fontFamily,
+      ),
+      darkTheme: AppTheme.darkTheme(
+        tenantPrimaryColor: colorPreset.seedColor,
+        fontFamily: fontOption.fontFamily,
+      ),
       themeMode: themeMode,
       locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,

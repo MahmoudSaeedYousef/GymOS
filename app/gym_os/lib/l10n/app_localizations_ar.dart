@@ -196,7 +196,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get search => 'بحث';
 
   @override
-  String get searchMemberHint => 'اكتب الاسم أو رقم الموبايل...';
+  String get searchMemberHint => 'ابحث بالاسم أو رقم الموبايل...';
 
   @override
   String get noMembersFound => 'لم يتم العثور على نتائج';
@@ -570,4 +570,83 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get dropInNotesOptional => 'ملاحظات (اختياري)';
+
+  @override
+  String get last7Days => 'آخر 7 أيام';
+
+  @override
+  String get attendance => 'الحضور';
+
+  @override
+  String get revenue => 'الإيرادات';
+
+  @override
+  String weeklyTotalAttendance(int count) {
+    return 'إجمالي: $count حضور';
+  }
+
+  @override
+  String weeklyTotalRevenue(String amount) {
+    return 'إجمالي: $amount';
+  }
+
+  @override
+  String get noActivityYet => 'لا توجد بيانات بعد';
+
+  @override
+  String selectedDaySummary(String date, String value) {
+    return '$date: $value';
+  }
+
+  @override
+  String get syncStatusSynced => 'متزامن';
+
+  @override
+  String syncStatusSyncing(int count) {
+    return 'جاري المزامنة ($count)';
+  }
+
+  @override
+  String get syncStatusOffline => 'أوفلاين';
+
+  @override
+  String syncStatusOfflineWithQueued(int count) {
+    return 'أوفلاين • $count بالانتظار';
+  }
+
+  @override
+  String get syncStatusChecking => 'جاري التحقق من المزامنة...';
+
+  @override
+  String get appFont => 'خط التطبيق';
+
+  @override
+  String get fontDefault => 'الافتراضي';
+
+  @override
+  String get fontAzer => 'آزر';
+
+  @override
+  String get fontAlyamama => 'اليمامة';
+
+  @override
+  String get accentColor => 'لون التطبيق';
+
+  @override
+  String get colorRoyalBlue => 'أزرق ملكي';
+
+  @override
+  String get colorEnergyOrange => 'برتقالي حيوي';
+
+  @override
+  String get colorEmerald => 'زمردي';
+
+  @override
+  String get colorCrimson => 'قرمزي';
+
+  @override
+  String get colorViolet => 'بنفسجي';
+
+  @override
+  String get expiringSoonStatus => 'ينتهي قريباً';
 }

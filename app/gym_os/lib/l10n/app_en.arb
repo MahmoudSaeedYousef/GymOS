@@ -63,7 +63,7 @@
   "membersTitle": "Members",
   "newMemberButton": "New Member",
   "search": "Search",
-  "searchMemberHint": "Type name or phone number...",
+  "searchMemberHint": "Search by name or phone...",
   "noMembersFound": "No results found",
   "noMembersYetList": "No members yet",
   "activeStatus": "Active",
@@ -199,5 +199,66 @@
   "recordAndCheckIn": "Record & Check In",
   "dropInSuccess": "Drop-in visit recorded and checked in successfully ✅",
   "amountRequired": "Please enter a valid amount",
-  "dropInNotesOptional": "Notes (optional)"
+  "dropInNotesOptional": "Notes (optional)",
+  "last7Days": "Last 7 Days",
+  "attendance": "Attendance",
+  "revenue": "Revenue",
+  "weeklyTotalAttendance": "Total: {count} check-ins",
+  "@weeklyTotalAttendance": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "weeklyTotalRevenue": "Total: {amount}",
+  "@weeklyTotalRevenue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "noActivityYet": "No activity data yet",
+  "selectedDaySummary": "{date}: {value}",
+  "@selectedDaySummary": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "syncStatusSynced": "Synced",
+  "syncStatusSyncing": "Syncing ({count})",
+  "@syncStatusSyncing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncStatusOffline": "Offline",
+  "syncStatusOfflineWithQueued": "Offline • {count} queued",
+  "@syncStatusOfflineWithQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncStatusChecking": "Checking sync status...",
+  "appFont": "App Font",
+  "fontDefault": "Default",
+  "fontAzer": "Azer",
+  "fontAlyamama": "Al-Yamama",
+  "accentColor": "Accent Color",
+  "colorRoyalBlue": "Royal Blue",
+  "colorEnergyOrange": "Energy Orange",
+  "colorEmerald": "Emerald",
+  "colorCrimson": "Crimson",
+  "colorViolet": "Violet",
+  "expiringSoonStatus": "Expiring Soon"
 }
