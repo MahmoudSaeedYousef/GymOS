@@ -116,13 +116,8 @@ final dashboardStatsStreamProvider =
 });
 
 /// Provider fetching gym-wide dashboard statistics.
-/// Driven reactively by local Drift streams, with fallback to API.
 final dashboardStatsProvider =
     FutureProvider.autoDispose<DashboardStatsModel>((ref) async {
-  final streamAsync = ref.watch(dashboardStatsStreamProvider);
-  if (streamAsync.hasValue && streamAsync.value != null) {
-    return streamAsync.value!;
-  }
   final api = ref.watch(dashboardApiServiceProvider);
   return api.getStats();
 });
