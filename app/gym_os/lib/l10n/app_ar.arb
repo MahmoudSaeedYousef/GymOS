@@ -16,11 +16,9 @@
       }
     }
   },
-
   "navDashboard": "الرئيسية",
   "navMembers": "المشتركين",
   "navSettings": "الإعدادات",
-
   "loginTitle": "Gymmy",
   "loginSubtitle": "سجل دخول لإدارة صالتك الرياضية",
   "phoneNumber": "رقم الموبايل",
@@ -33,7 +31,6 @@
   "invalidPhoneOrPassword": "رقم الهاتف أو كلمة المرور غير صحيحة",
   "welcomeToGymOS": "أهلاً بك في Gymmy",
   "loginSuccess": "تم تسجيل الدخول بنجاح",
-
   "goodMorningCaptain": "صباح الخير، يا كابتن 👋",
   "gymOverview": "نظرة عامة على الجيم",
   "currentlyInGym": "متواجد في الجيم الآن",
@@ -62,7 +59,6 @@
   "noMembersYet": "لا يوجد مشتركين بعد",
   "memberUnit": "عضو",
   "heroBadge": "بطل",
-
   "currentInsideTitle": "المتواجدون في الجيم الآن",
   "noMembersInside": "لا يوجد أعضاء متواجدون حالياً",
   "realtimeGateUpdate": "يتم التحديث لحظياً عند تسجيل الدخول من البوابة",
@@ -104,7 +100,6 @@
       }
     }
   },
-
   "membersTitle": "المشتركين",
   "newMemberButton": "مشترك جديد",
   "search": "بحث",
@@ -125,17 +120,15 @@
       }
     }
   },
-
   "memberProfileTitle": "ملف المشترك",
   "activeSubscription": "اشتراك نشط",
   "expiredSubscription": "اشتراك منتهي",
   "subscriptionDetails": "تفاصيل الاشتراك",
   "plan": "الباقة",
-  "noPlan": "لا توجد باقة",
+  "noPlan": "بدون باقة",
   "endDate": "تاريخ الانتهاء",
   "recordAttendance": "تسجيل الحضور",
   "renewSubscription": "تجديد الاشتراك",
-
   "addNewMemberTitle": "إضافة مشترك جديد",
   "enterMemberDataHint": "أدخل بيانات المشترك لتفعيل الحساب",
   "fullName": "الاسم بالكامل",
@@ -147,7 +140,6 @@
   "failedToLoadPlans": "تعذر تحميل الباقات",
   "saveAndActivate": "حفظ وتفعيل الاشتراك",
   "memberAddedSuccess": "تم إضافة المشترك بنجاح ✅",
-
   "renewSubscriptionFor": "تجديد اشتراك: {memberName}",
   "@renewSubscriptionFor": {
     "placeholders": {
@@ -171,17 +163,14 @@
   "confirmPaymentAndRenew": "تأكيد الدفع والتجديد",
   "pleaseSelectPlan": "برجاء اختيار الباقة",
   "pleaseEnterValidAmount": "برجاء إدخال مبلغ صحيح",
-
   "paymentCash": "كاش",
   "paymentVisa": "فيزا",
   "paymentInstaPay": "إنستاباي",
   "paymentVodafoneCash": "فودافون كاش",
   "paymentOther": "أخرى",
-
   "searchForMember": "ابحث عن مشترك",
   "nameOrPhoneHint": "الاسم أو رقم الموبايل...",
   "noMembersMatched": "لم يتم العثور على مشتركين",
-
   "settingsTitle": "الإعدادات",
   "appCustomization": "تخصيص التطبيق",
   "darkMode": "الوضع الداكن",
@@ -190,7 +179,6 @@
   "languageEnglish": "English",
   "account": "الحساب",
   "logout": "تسجيل الخروج",
-
   "managePlans": "إدارة الباقات",
   "managePlansAndSubscriptions": "إدارة الباقات والاشتراكات",
   "addPlan": "إضافة باقة",
@@ -241,7 +229,6 @@
       }
     }
   },
-
   "paymentsHistory": "سجل المدفوعات والإيرادات",
   "totalCollected": "إجمالي المحصل",
   "periodToday": "اليوم",
@@ -253,7 +240,6 @@
   "visaBreakdown": "فيزا",
   "noPaymentsFound": "لا توجد مدفوعات مسجلة",
   "registerBreakdown": "تفاصيل الخزينة",
-
   "sendWhatsappReminder": "تذكير واتساب",
   "whatsappRenewalMessage": "أهلاً كابتن {memberName} 💪، بنفكرك إن اشتراكك في الجيم انتهى. مستنيينك تنورنا لتجديد الباقة وتكمل تمرينك!",
   "@whatsappRenewalMessage": {
@@ -264,7 +250,6 @@
     }
   },
   "whatsappLaunchError": "تعذر فتح واتساب على هذا الجهاز",
-
   "sortBy": "ترتيب حسب",
   "sortNewest": "الأحدث اشتراكاً",
   "sortExpiringSoon": "الأقرب للانتهاء",

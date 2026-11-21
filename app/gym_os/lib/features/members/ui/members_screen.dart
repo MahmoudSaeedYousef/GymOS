@@ -28,7 +28,6 @@ class MembersScreen extends ConsumerStatefulWidget {
 
 class _MembersScreenState extends ConsumerState<MembersScreen>
     with AutomaticKeepAliveClientMixin {
-
   @override
   bool get wantKeepAlive => true;
   final _scrollController = ScrollController();
@@ -127,7 +126,10 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
               style: FilledButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor: colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -158,7 +160,9 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
             // Clean rounded search bar without redundant outer label
             Container(
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: colorScheme.outlineVariant.withValues(alpha: 0.4),
@@ -237,7 +241,8 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                         const SizedBox(width: 8),
                         _FilterChipItem(
                           label: context.l10n.filterActive,
-                          isSelected: state.selectedFilter == MemberFilter.active,
+                          isSelected:
+                              state.selectedFilter == MemberFilter.active,
                           onTap: () {
                             HapticFeedback.selectionClick();
                             ref
@@ -248,7 +253,8 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                         const SizedBox(width: 8),
                         _FilterChipItem(
                           label: context.l10n.filterExpired,
-                          isSelected: state.selectedFilter == MemberFilter.expired,
+                          isSelected:
+                              state.selectedFilter == MemberFilter.expired,
                           onTap: () {
                             HapticFeedback.selectionClick();
                             ref
@@ -259,7 +265,8 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                         const SizedBox(width: 8),
                         _FilterChipItem(
                           label: context.l10n.filterTodayAttendance,
-                          isSelected: state.selectedFilter == MemberFilter.today,
+                          isSelected:
+                              state.selectedFilter == MemberFilter.today,
                           onTap: () {
                             HapticFeedback.selectionClick();
                             ref
@@ -384,11 +391,7 @@ class _FilterChipItem extends StatelessWidget {
   }
 }
 
-enum _MemberSubscriptionStatus {
-  active,
-  expiringSoon,
-  expired,
-}
+enum _MemberSubscriptionStatus { active, expiringSoon, expired, withoutPlan }
 
 class _MemberCardItem extends ConsumerStatefulWidget {
   final MemberModel member;
@@ -402,29 +405,46 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
   bool _isCheckingIn = false;
 
   _MemberSubscriptionStatus get _status {
+    final endDateStr = widget.member.subscriptionEndDate;
+    final planName = widget.member.activePlanName;
+    final hasNoPlan = planName == null || planName.trim().isEmpty;
+
+    // If subscription end date is null, member is without a plan
+    if (endDateStr == null || endDateStr.trim().isEmpty) {
+      return _MemberSubscriptionStatus.withoutPlan;
+    }
+
+    final endDate = DateTime.tryParse(endDateStr);
+    if (endDate == null) {
+      return _MemberSubscriptionStatus.withoutPlan;
+    }
+
+    final now = DateTime.now();
+    final daysRemaining = endDate.difference(now).inDays;
+
+    // If member has no plan but has a future subscription end date
+    if (hasNoPlan && daysRemaining >= 0) {
+      return _MemberSubscriptionStatus.withoutPlan;
+    }
+
     final statusStr = widget.member.subscriptionStatus.toLowerCase();
-    if (statusStr != 'active') {
+    if (statusStr != 'active' || daysRemaining < 0) {
       return _MemberSubscriptionStatus.expired;
     }
-    if (widget.member.subscriptionEndDate != null) {
-      final endDate = DateTime.tryParse(widget.member.subscriptionEndDate!);
-      if (endDate != null) {
-        final daysRemaining = endDate.difference(DateTime.now()).inDays;
-        if (daysRemaining < 0) {
-          return _MemberSubscriptionStatus.expired;
-        } else if (daysRemaining <= 3) {
-          return _MemberSubscriptionStatus.expiringSoon;
-        }
-      }
+
+    if (daysRemaining <= 3) {
+      return _MemberSubscriptionStatus.expiringSoon;
     }
+
     return _MemberSubscriptionStatus.active;
   }
 
   Future<void> _handleCheckIn() async {
     setState(() => _isCheckingIn = true);
     try {
-      final message =
-          await ref.read(attendanceApiProvider).checkIn(widget.member.id);
+      final message = await ref
+          .read(attendanceApiProvider)
+          .checkIn(widget.member.id);
 
       if (!mounted) return;
 
@@ -483,6 +503,10 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
         statusColor = const Color(0xFFDC2626); // Crisp Red
         statusLabel = l10n.expiredStatus;
         break;
+      case _MemberSubscriptionStatus.withoutPlan:
+        statusColor = colorScheme.outline; // Neutral/Grey for no plan
+        statusLabel = l10n.noPlan;
+        break;
     }
 
     final initialLetter = widget.member.fullName.trim().isNotEmpty
@@ -491,10 +515,7 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
 
     return GymCard(
       onTap: () {
-        context.pushNamed(
-          'memberProfile',
-          extra: widget.member,
-        );
+        context.pushNamed('memberProfile', extra: widget.member);
       },
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -572,7 +593,9 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
                     Icon(
                       Icons.phone_rounded,
                       size: 13,
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                      color: colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.7,
+                      ),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -587,7 +610,9 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
                       Text(
                         ' • ',
                         style: TextStyle(
-                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.5,
+                          ),
                           fontSize: 12,
                         ),
                       ),
@@ -596,7 +621,9 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
                           '${widget.member.activePlanName} (${_formatExpiryDate(widget.member.subscriptionEndDate)})',
                           style: TextStyle(
                             fontSize: 12,
-                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                            color: colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.8,
+                            ),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -650,10 +677,7 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
               tooltip: l10n.sendWhatsappReminder,
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 32,
-                minHeight: 32,
-              ),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               onPressed: () {
                 WhatsAppHelper.sendRenewalReminder(
                   context,
@@ -673,10 +697,7 @@ class _SortTriggerButton extends StatelessWidget {
   final MemberSortOption selectedSort;
   final VoidCallback onTap;
 
-  const _SortTriggerButton({
-    required this.selectedSort,
-    required this.onTap,
-  });
+  const _SortTriggerButton({required this.selectedSort, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

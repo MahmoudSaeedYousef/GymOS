@@ -68,11 +68,7 @@ class SyncStatusPill extends ConsumerWidget {
         pillContent = Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 13,
-              color: amberColor,
-            ),
+            const Icon(Icons.cloud_off_rounded, size: 13, color: amberColor),
             const SizedBox(width: AppSpacing.xs),
             Text(
               label,
@@ -94,11 +90,7 @@ class SyncStatusPill extends ConsumerWidget {
         pillContent = Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.wifi_off_rounded,
-              size: 13,
-              color: colors.textSecondary,
-            ),
+            Icon(Icons.wifi_off_rounded, size: 13, color: colors.textSecondary),
             const SizedBox(width: AppSpacing.xs),
             Text(
               label,
@@ -148,26 +140,11 @@ class SyncStatusPill extends ConsumerWidget {
         onTap: () {
           HapticFeedback.lightImpact();
           ref.read(syncEngineProvider).syncNow();
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                isArabic
-                    ? 'جاري التحقق من المزامنة...'
-                    : 'Checking sync status...',
-              ),
-              duration: const Duration(seconds: 1),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
         },
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 5,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(16),
