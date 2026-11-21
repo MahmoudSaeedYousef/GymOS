@@ -28,7 +28,46 @@ class DashboardApiService {
   DashboardApiService(this._dio, [this._db, this._syncEngine]);
 
   Future<DashboardStatsModel> getStats() async {
-    // Return live stats from local Drift DB if available (local source of truth)
+    // 1. Try fetching fresh summary stats from backend
+    DashboardStatsModel? serverStats;
+    try {
+      final response = await _dio.get(
+        '/api/dashboard/stats',
+        options: Options(
+          sendTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 3),
+        ),
+      );
+      if (response.data is Map<String, dynamic>) {
+        serverStats = DashboardStatsModel.fromJson(
+          response.data as Map<String, dynamic>,
+        );
+        // Cache to Drift metadata
+        if (_db != null) {
+          await _db.syncOutboxDao.setMetadata(
+            'cached_dashboard_stats',
+            jsonEncode(serverStats.toJson()),
+          );
+        }
+      }
+    } catch (_) {
+      // Offline or network timeout - fallback to cached / local
+    }
+
+    // 2. Read cached server stats if network was unavailable
+    if (serverStats == null && _db != null) {
+      final cachedJson =
+          await _db.syncOutboxDao.getMetadata('cached_dashboard_stats');
+      if (cachedJson != null) {
+        try {
+          serverStats = DashboardStatsModel.fromJson(
+            jsonDecode(cachedJson) as Map<String, dynamic>,
+          );
+        } catch (_) {}
+      }
+    }
+
+    // 3. Return merged stats with local unsynced check-ins (deduplicated by memberId)
     if (_db != null) {
       final now = DateTime.now();
       final todayStart = DateTime(now.year, now.month, now.day);
@@ -40,12 +79,27 @@ class DashboardApiService {
       final activeCount = allMembers.where((m) => m.status == 1).length;
       final expiredCount = allMembers.where((m) => m.status != 1).length;
 
+      // Local unsynced check-ins for today
       final todayAttendance = await (_db.select(_db.localAttendance)
             ..where((t) =>
                 t.checkInTime.isBiggerOrEqualValue(todayStart) &
                 t.checkInTime.isSmallerOrEqualValue(todayEnd)))
           .get();
-      final todayCheckIns = todayAttendance.length;
+
+      // Distinct member IDs / IDs from local today attendance
+      final localTodayDistinct = <String>{};
+      for (final a in todayAttendance) {
+        final id = (a.memberId != null && a.memberId!.isNotEmpty)
+            ? a.memberId!
+            : a.id;
+        localTodayDistinct.add(id);
+      }
+
+      final todayCheckIns = (serverStats != null && serverStats.todayCheckInsCount > 0)
+          ? (serverStats.todayCheckInsCount > localTodayDistinct.length
+              ? serverStats.todayCheckInsCount
+              : localTodayDistinct.length)
+          : localTodayDistinct.length;
 
       final currentlyInsideList = await (_db.select(_db.localAttendance)
             ..where((t) => t.checkOutTime.isNull()))
@@ -79,14 +133,24 @@ class DashboardApiService {
       );
 
       return DashboardStatsModel(
-        activeMembersCount: activeCount,
-        expiredSubscriptionsCount: expiredCount,
+        activeMembersCount:
+            serverStats?.activeMembersCount ?? activeCount,
+        expiredSubscriptionsCount:
+            serverStats?.expiredSubscriptionsCount ?? expiredCount,
         todayCheckInsCount: todayCheckIns,
-        monthlyRevenue: monthlyRevenue,
-        currentInside: currentInside,
-        todayRevenue: todayRevenue,
-        monthlyDropInRevenue: monthlyDropInRevenue,
+        monthlyRevenue: serverStats?.monthlyRevenue ?? monthlyRevenue,
+        currentInside: currentInside > 0
+            ? currentInside
+            : (serverStats?.currentInside ?? 0),
+        todayRevenue: serverStats?.todayRevenue ?? todayRevenue,
+        monthlyDropInRevenue:
+            serverStats?.monthlyDropInRevenue ?? monthlyDropInRevenue,
+        last7DaysAttendance: serverStats?.last7DaysAttendance,
       );
+    }
+
+    if (serverStats != null) {
+      return serverStats;
     }
 
     try {

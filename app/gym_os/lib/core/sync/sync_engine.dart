@@ -584,7 +584,14 @@ class SyncEngine {
 
     // 5. Pull Dashboard Summary / Stats
     try {
-      await dio.get('/api/dashboard/stats', options: pullOptions);
+      final statsRes =
+          await dio.get('/api/dashboard/stats', options: pullOptions);
+      if (statsRes.data is Map<String, dynamic>) {
+        await db.syncOutboxDao.setMetadata(
+          'cached_dashboard_stats',
+          jsonEncode(statsRes.data),
+        );
+      }
     } catch (_) {}
   }
 

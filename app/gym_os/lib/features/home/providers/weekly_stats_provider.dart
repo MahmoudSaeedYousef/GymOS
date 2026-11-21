@@ -138,10 +138,18 @@ Stream<List<DailyStatPoint>> aggregateWeeklyStats({
       );
 
       return days.map((d) {
-        final count = attendanceList.where((a) {
+        final dayRecords = attendanceList.where((a) {
           final t = a.checkInTime;
           return t.year == d.year && t.month == d.month && t.day == d.day;
-        }).length;
+        });
+
+        // Deduplicate distinct members per day (matching Today's Attendance distinct logic)
+        final distinctMemberIds = <String>{};
+        for (final a in dayRecords) {
+          final id = (a.memberId != null && a.memberId!.isNotEmpty) ? a.memberId! : a.id;
+          distinctMemberIds.add(id);
+        }
+        final count = distinctMemberIds.length;
 
         final rev = paymentsList.where((p) {
           final t = p.createdAt;

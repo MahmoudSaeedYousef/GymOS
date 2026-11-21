@@ -138,49 +138,70 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
             .OrderBy(u => u.Id)
             .ToListAsync(cancellationToken);
 
+        const int targetMemberCount = 100;
         var newMembersAdded = 0;
-        if (members.Count < 25)
+        if (members.Count < targetMemberCount)
         {
-            var extraEgyptianNames = new[]
+            var firstNames = new[]
             {
-                ("أحمد حسن مصطفى", "01091234501"),
-                ("محمد علي إبراهيم", "01182345602"),
-                ("محمود طارق الشناوي", "01273456703"),
-                ("كريم سمير عبد العزيز", "01064567804"),
-                ("عمر شريف الدسوقي", "01555678905"),
-                ("يوسف علاء البدري", "01146789006"),
-                ("سارة مصطفى كمال", "01237890107"),
-                ("نور الدين حسام فهمي", "01028901208"),
-                ("مريم هشام فاروق", "01519012309"),
-                ("خالد وليد الجندي", "01100123410")
+                "أحمد", "محمد", "محمود", "كريم", "عمر", "يوسف", "سارة", "نور", "مريم", "خالد",
+                "علي", "إبراهيم", "طارق", "سمير", "شريف", "علاء", "مصطفى", "حسام", "هشام", "وليد",
+                "ياسين", "زياد", "حمزة", "بلال", "آسر", "سلمى", "ياسمين", "فريدة", "هند", "ندى",
+                "أميرة", "رنا", "دينا", "منى", "آية", "حازم", "عمرو", "تامر", "رامي", "هاني",
+                "ماجد", "وائل", "أيمن", "معتز", "شادي", "أدهم", "فارس", "مروان", "سيف", "باسل"
             };
 
-            var toAddCount = Math.Min(25 - members.Count, extraEgyptianNames.Length);
-            for (var i = 0; i < toAddCount; i++)
+            var middleOrLastNames = new[]
             {
-                var (name, phone) = extraEgyptianNames[i];
-                var existingPhone = await dbContext.Users
-                    .IgnoreQueryFilters()
-                    .AnyAsync(u => u.TenantId == targetGymId && u.PhoneNumber == phone, cancellationToken);
+                "حسن", "علي", "إبراهيم", "طارق", "سمير", "شريف", "علاء", "مصطفى", "حسام", "هشام",
+                "وليد", "كمال", "فهمي", "فاروق", "الجندي", "الشناوي", "عبد العزيز", "الدسوقي", "البدري", "المهدي",
+                "الشافعي", "النجار", "الحداد", "الصاوي", "القاضي", "زهران", "عثمان", "منصور", "صلاح", "راضي",
+                "سالم", "عطية", "سليمان", "رزق", "غنيم", "مختار", "جمال", "صبري", "جاد", "الهواري"
+            };
 
-                if (!existingPhone)
+            var phonePrefixes = new[] { "010", "011", "012", "015" };
+            var existingPhones = (await dbContext.Users
+                .IgnoreQueryFilters()
+                .Where(u => u.TenantId == targetGymId && u.PhoneNumber != null)
+                .Select(u => u.PhoneNumber!)
+                .ToListAsync(cancellationToken)).ToHashSet();
+
+            var randomGen = new Random(1337);
+            var attempts = 0;
+
+            while (members.Count < targetMemberCount && attempts < 2000)
+            {
+                attempts++;
+                var f = firstNames[randomGen.Next(firstNames.Length)];
+                var m = middleOrLastNames[randomGen.Next(middleOrLastNames.Length)];
+                var l = middleOrLastNames[randomGen.Next(middleOrLastNames.Length)];
+                var fullName = $"{f} {m} {l}";
+
+                var prefix = phonePrefixes[randomGen.Next(phonePrefixes.Length)];
+                var phoneNum = $"{prefix}{randomGen.Next(10000000, 99999999)}";
+
+                if (existingPhones.Contains(phoneNum))
                 {
-                    var suffix = Guid.NewGuid().ToString("N")[..6];
-                    var newMember = new ApplicationUser
-                    {
-                        Id = Guid.CreateVersion7().ToString(),
-                        TenantId = targetGymId,
-                        Type = UserType.Member,
-                        FullName = name,
-                        PhoneNumber = phone,
-                        UserName = $"{phone}_{suffix}",
-                        NormalizedUserName = $"{phone}_{suffix}".ToUpperInvariant(),
-                        IsGuest = false
-                    };
-                    dbContext.Users.Add(newMember);
-                    members.Add(newMember);
-                    newMembersAdded++;
+                    continue;
                 }
+
+                existingPhones.Add(phoneNum);
+                var suffix = Guid.NewGuid().ToString("N")[..6];
+                var newMember = new ApplicationUser
+                {
+                    Id = Guid.CreateVersion7().ToString(),
+                    TenantId = targetGymId,
+                    Type = UserType.Member,
+                    FullName = fullName,
+                    PhoneNumber = phoneNum,
+                    UserName = $"{phoneNum}_{suffix}",
+                    NormalizedUserName = $"{phoneNum}_{suffix}".ToUpperInvariant(),
+                    IsGuest = false
+                };
+
+                dbContext.Users.Add(newMember);
+                members.Add(newMember);
+                newMembersAdded++;
             }
 
             if (newMembersAdded > 0)
@@ -226,11 +247,44 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
         var random = new Random(42); // deterministic seed for stability
         var paymentMethods = new[] { PaymentMethod.Cash, PaymentMethod.InstaPay, PaymentMethod.VodafoneCash };
 
+        // Pre-determine a varied distribution of active start dates across 0..29 days ago:
+        // Weekdays and days vary so daily payment revenue across past 30 days is noticeably varied (high, medium, low days).
+        // Daily subscription joining target weights for past 30 days (day 0 = today, day 29 = 29 days ago)
+        var dailyActiveMemberSlots = new List<int>();
+        var activeDaysDistribution = new int[30];
+        // Cycle pattern with distinct high, medium, and low revenue days:
+        for (var d = 0; d < 30; d++)
+        {
+            var dayWeight = (d % 7) switch
+            {
+                0 => 3, // High (e.g. today / Sat)
+                1 => 4, // High
+                2 => 2, // Medium
+                3 => 3, // High
+                4 => 1, // Low
+                5 => 0, // Very low / weekend
+                _ => 2  // Medium
+            };
+            activeDaysDistribution[d] = dayWeight;
+        }
+
+        // Fill slots based on weights
+        for (var d = 0; d < 30; d++)
+        {
+            for (var w = 0; w < activeDaysDistribution[d]; w++)
+            {
+                dailyActiveMemberSlots.Add(d);
+            }
+        }
+
+        var activeSlotIndex = 0;
+
         for (var i = 0; i < totalMembers; i++)
         {
             var member = members[i];
             var plan = durationPlans[i % durationPlans.Count];
             var planDuration = plan.DurationInDays > 0 ? plan.DurationInDays : 30;
+            var planPrice = plan.Price > 0 ? plan.Price : 500m;
 
             DateOnly subStartDate;
             DateOnly subEndDate;
@@ -251,13 +305,20 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
             }
             else
             {
-                // Active: started 3-25 days ago, valid for 6-150 days
-                var startAgo = 3 + (random.Next(23)); // 3 to 25
+                // Active: distribute starts across past 0 to 25 days ago, ensuring subEndDate > today
+                var daysAgo = dailyActiveMemberSlots.Count > 0
+                    ? dailyActiveMemberSlots[activeSlotIndex++ % dailyActiveMemberSlots.Count]
+                    : (random.Next(25));
+
+                // Guard against startAgo >= planDuration so subEndDate is strictly > today
+                var maxStartAgo = Math.Max(0, planDuration - 1);
+                var startAgo = Math.Min(daysAgo, maxStartAgo);
+
                 subStartDate = today.AddDays(-startAgo);
                 subEndDate = subStartDate.AddDays(planDuration);
                 if (subEndDate <= today)
                 {
-                    subEndDate = today.AddDays(15);
+                    subEndDate = today.AddDays(Math.Max(5, planDuration - startAgo));
                 }
             }
 
@@ -286,7 +347,7 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
                 TenantId = targetGymIdString,
                 MemberId = member.Id,
                 PlanId = plan.Id,
-                Amount = plan.Price,
+                Amount = planPrice,
                 Method = method,
                 PaymentDate = paymentTime,
                 IsDropIn = false,
@@ -298,6 +359,7 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
         }
 
         // 6. Generate ~12 Drop-in Payments Spread Across Past 30 Days (including 2 today)
+        // Varied amounts and days (e.g. distinct high/med/low traffic days)
         var dropInPlanObj = existingPlans.FirstOrDefault(p => p.Kind == PlanKind.VisitPack && p.VisitsIncluded == 1)
                             ?? existingPlans.FirstOrDefault(p => p.Kind == PlanKind.VisitPack)
                             ?? existingPlans.First();
@@ -305,17 +367,18 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
 
         var dropInPaymentsCount = 0;
         // 10 drop-ins on previous days
-        for (var d = 1; d <= 10; d++)
+        // Spread across past 30 days with varied distribution (some clustered on peak days, some solitary)
+        var dropInDayOffsets = new[] { 1, 1, 2, 3, 5, 8, 10, 15, 21, 28 };
+        for (var d = 0; d < 10; d++)
         {
-            var dayOffset = (d * 3) - random.Next(2);
-            if (dayOffset > 29) dayOffset = 29;
-            if (dayOffset < 1) dayOffset = 1;
-
+            var dayOffset = dropInDayOffsets[d];
             var dropInMember = members[(d + 5) % members.Count];
             var dropInDate = now.AddDays(-dayOffset).Date
                 .AddHours(11 + random.Next(9))
                 .AddMinutes(random.Next(60));
 
+            // Vary drop-in price slightly (e.g. single session vs day pass / student)
+            var dropInAmount = (d % 3 == 0) ? dropInPrice * 1.5m : dropInPrice;
             var method = paymentMethods[random.Next(paymentMethods.Length)];
             var dropInPayment = new PaymentRecord
             {
@@ -323,7 +386,7 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
                 TenantId = targetGymIdString,
                 MemberId = dropInMember.Id,
                 PlanId = dropInPlanObj.Id,
-                Amount = dropInPrice,
+                Amount = dropInAmount,
                 Method = method,
                 PaymentDate = DateTime.SpecifyKind(dropInDate, DateTimeKind.Utc),
                 IsDropIn = true,
@@ -358,9 +421,9 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
             dropInPaymentsCount++;
         }
 
-        // 7. Generate Realistic 30-Day & 7-Day Attendance Records (~180–220)
-        // Heavier on Saturday (DayOfWeek.Saturday), Monday (Monday), Wednesday (Wednesday); lighter on Friday (Friday).
-        // For today: 7-10 check-ins, with exactly 3 members currently inside (CheckOutTime = null, checked in within 15-90 min).
+        // 7. Generate Realistic 30-Day & 7-Day Attendance Records
+        // Varied daily attendance: High (10-13), Medium (6-9), Low (2-4) depending on day of week and cycle
+        // For today: 9 check-ins, with exactly 3 members currently inside (CheckOutTime = null, checked in within 15-90 min).
         var attendances = new List<AttendanceRecord>();
 
         // Previous 29 days attendance:
@@ -369,13 +432,17 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
             var targetDay = now.AddDays(-dayAgo).Date;
             var dayOfWeek = targetDay.DayOfWeek;
 
+            // Varied daily counts across last 7 and 30 days (High ~11-13, Med ~6-9, Low ~2-4)
             int targetDailyCount = dayOfWeek switch
             {
-                DayOfWeek.Saturday => random.Next(8, 11),
-                DayOfWeek.Monday => random.Next(8, 11),
-                DayOfWeek.Wednesday => random.Next(8, 11),
-                DayOfWeek.Friday => random.Next(2, 5),   // Friday lighter
-                _ => random.Next(5, 8)                   // Sun, Tue, Thu moderate
+                DayOfWeek.Saturday => random.Next(11, 14), // High peak day
+                DayOfWeek.Monday => random.Next(10, 13),   // High peak day
+                DayOfWeek.Wednesday => random.Next(9, 12), // Medium-high day
+                DayOfWeek.Sunday => random.Next(6, 9),     // Medium day
+                DayOfWeek.Tuesday => random.Next(7, 10),   // Medium day
+                DayOfWeek.Thursday => random.Next(5, 8),   // Medium-low day
+                DayOfWeek.Friday => random.Next(2, 5),     // Low day (rest day in Egypt)
+                _ => random.Next(6, 10)
             };
 
             var shuffledMembers = members.OrderBy(_ => random.Next()).Take(targetDailyCount).ToList();
