@@ -17,11 +17,19 @@ class AttendanceDao extends DatabaseAccessor<AppDatabase>
     DateTime dayStart,
     DateTime dayEnd,
   ) {
+    return watchAttendanceInRange(dayStart, dayEnd);
+  }
+
+  /// Watches attendance records for any specific date-time range.
+  Stream<List<LocalAttendanceData>> watchAttendanceInRange(
+    DateTime start,
+    DateTime end,
+  ) {
     return (select(localAttendance)
           ..where(
             (t) =>
-                t.checkInTime.isBiggerOrEqualValue(dayStart) &
-                t.checkInTime.isSmallerOrEqualValue(dayEnd),
+                t.checkInTime.isBiggerOrEqualValue(start) &
+                t.checkInTime.isSmallerOrEqualValue(end),
           )
           ..orderBy([
             (t) =>

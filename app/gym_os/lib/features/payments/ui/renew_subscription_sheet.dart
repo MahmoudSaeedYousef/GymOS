@@ -64,6 +64,7 @@ class _RenewSubscriptionSheetState
           );
 
       ref.invalidate(dashboardStatsProvider);
+      ref.read(membersProvider.notifier).resetFilters();
       if (!mounted) return;
       Navigator.pop(context, true); // نقفل الشيت ونبعت true عشان نحدث الشاشة
       ScaffoldMessenger.of(context).showSnackBar(

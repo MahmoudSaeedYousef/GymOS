@@ -15,6 +15,7 @@ import 'package:gym_os/features/attendance/services/attendance_api_service.dart'
 import 'package:gym_os/features/attendance/ui/widgets/current_inside_sheet.dart';
 import 'package:gym_os/features/home/providers/dashboard_provider.dart';
 import 'package:gym_os/features/home/ui/widgets/drop_in_session_bottom_sheet.dart';
+import 'package:gym_os/features/home/ui/widgets/weekly_activity_chart_card.dart';
 import 'package:gym_os/features/members/models/member_model.dart';
 import 'package:gym_os/features/members/ui/add_member_sheet.dart';
 import 'package:gym_os/features/members/ui/widgets/quick_search_sheet.dart';
@@ -35,7 +36,8 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with AutomaticKeepAliveClientMixin {
   // Mode defaults to Operations. (Role auto-detection is blocked because
   // role is not exposed by existing authProvider).
   DashboardViewMode _viewMode = DashboardViewMode.operations;
@@ -45,10 +47,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _searchQuery = '';
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(syncLifecycleObserverProvider);
+      ref.read(membersProvider.notifier).resetFilters();
     });
     _searchController.addListener(() {
       final text = _searchController.text.trim();
@@ -66,6 +72,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   // 1. Open Add Member Sheet
   void _openAddMemberSheet() {
+    ref.read(membersProvider.notifier).resetFilters();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -79,6 +87,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   // 2. Open Renew Plan Sheet (with quick member selection)
   void _openRenewAction() {
+    ref.read(membersProvider.notifier).resetFilters();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -139,6 +149,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   // 3. Open Check-in Action Sheet
   void _openCheckInAction() {
+    ref.read(membersProvider.notifier).resetFilters();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -202,6 +214,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final colors = context.gymColors;
     final statsAsync = ref.watch(dashboardStatsProvider);
 
@@ -506,7 +519,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 title: context.l10n.todayRevenue,
                 numericValue: stats.todayRevenue,
                 icon: Icons.payments_outlined,
-                accentColor: colors.active,
+                accentColor: colors.brandPrimary,
                 suffix: ' ${context.l10n.currency}',
                 onTap: () => context.push('/payments'),
               ),
@@ -520,6 +533,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
         error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      ),
+
+      // 4. Last 7 Days Activity Chart Card (Attendance & Revenue)
+      const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs,
+          ),
+          child: WeeklyActivityChartCard(),
+        ),
       ),
     ];
   }
@@ -897,28 +921,28 @@ class _DashboardHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SyncStatusPill(),
-            const SizedBox(width: AppSpacing.sm),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: onNotificationTap,
-                borderRadius: BorderRadius.circular(24),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: colors.surfaceLevel2,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: colors.surfaceBorder),
-                  ),
-                  child: Icon(
-                    Icons.notifications_none_rounded,
-                    color: colors.textPrimary,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ),
+            // const SizedBox(width: AppSpacing.sm),
+            // Material(
+            //   color: Colors.transparent,
+            //   child: InkWell(
+            //     onTap: onNotificationTap,
+            //     borderRadius: BorderRadius.circular(24),
+            //     child: Container(
+            //       width: 44,
+            //       height: 44,
+            //       decoration: BoxDecoration(
+            //         color: colors.surfaceLevel2,
+            //         shape: BoxShape.circle,
+            //         border: Border.all(color: colors.surfaceBorder),
+            //       ),
+            //       child: Icon(
+            //         Icons.notifications_none_rounded,
+            //         color: colors.textPrimary,
+            //         size: 20,
+            //       ),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ],
@@ -1227,15 +1251,18 @@ class _SecondaryActionButton extends StatelessWidget {
 }
 
 /// Slim Live Presence Strip (no neon glow, subtle pulse)
-class _SlimPresenceStrip extends StatelessWidget {
+class _SlimPresenceStrip extends ConsumerWidget {
   final DashboardStatsModel stats;
   final VoidCallback onTap;
 
   const _SlimPresenceStrip({required this.stats, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.gymColors;
+    final currentInsideAsync = ref.watch(currentInsideProvider);
+    final liveCount =
+        currentInsideAsync.value?.length ?? stats.currentInsideCount;
     final disableAnimations =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
@@ -1282,22 +1309,22 @@ class _SlimPresenceStrip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedCounter(
-                value: stats.currentInside,
+                value: liveCount,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: colors.active,
                 ),
               ),
-              const SizedBox(width: 4),
-              Text(
-                context.l10n.memberUnit,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: colors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              // const SizedBox(width: 4),
+              // Text(
+              //   context.l10n.memberUnit,
+              //   style: TextStyle(
+              //     fontSize: 11,
+              //     color: colors.textSecondary,
+              //     fontWeight: FontWeight.w500,
+              //   ),
+              // ),
               const SizedBox(width: AppSpacing.xs),
               Icon(
                 Directionality.of(context) == TextDirection.rtl
@@ -1347,12 +1374,12 @@ class _OverviewRevenueCard extends StatelessWidget {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: colors.active.withValues(alpha: 0.1),
+                      color: colors.brandPrimary.withValues(alpha: 0.1),
                       borderRadius: AppSpacing.borderRadiusSm,
                     ),
                     child: Icon(
                       Icons.account_balance_wallet_outlined,
-                      color: colors.active,
+                      color: colors.brandPrimary,
                       size: 22,
                     ),
                   ),
@@ -1389,7 +1416,7 @@ class _OverviewRevenueCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: colors.active,
+                  color: colors.textPrimary,
                 ),
               ),
             ],

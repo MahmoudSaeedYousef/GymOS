@@ -3,8 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gym_os/core/ui/atoms/gym_card.dart';
-import 'package:gym_os/core/ui/atoms/gym_text_field.dart';
 import 'package:gym_os/core/utils/whatsapp_helper.dart';
+import 'package:gym_os/features/attendance/services/attendance_api_service.dart';
+import 'package:gym_os/features/attendance/ui/widgets/check_in_success_dialog.dart';
+import 'package:gym_os/features/home/providers/dashboard_provider.dart';
+import 'package:gym_os/features/payments/ui/renew_subscription_sheet.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/l10n/l10n_extension.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -22,8 +26,13 @@ class MembersScreen extends ConsumerStatefulWidget {
   ConsumerState<MembersScreen> createState() => _MembersScreenState();
 }
 
-class _MembersScreenState extends ConsumerState<MembersScreen> {
+class _MembersScreenState extends ConsumerState<MembersScreen>
+    with AutomaticKeepAliveClientMixin {
+
+  @override
+  bool get wantKeepAlive => true;
   final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -55,6 +64,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -85,44 +95,122 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final state = ref.watch(membersProvider);
-    final colors = context.gymColors;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final displayMembers = state.filteredMembers;
+
+    // Keep the search text field in sync with state if state was reset
+    if (state.searchQuery.isEmpty && _searchController.text.isNotEmpty) {
+      _searchController.clear();
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.l10n.membersTitle),
+        title: Text(
+          context.l10n.membersTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
+          // Subtle icon-only refresh button
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded, size: 22),
+            tooltip: context.l10n.refresh,
             onPressed: () => ref.read(membersProvider.notifier).loadInitial(),
+          ),
+          // Sleek primary pill button for "+ New Member"
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: AppSpacing.md),
+            child: FilledButton.icon(
+              onPressed: _openAddMemberSheet,
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 0,
+                visualDensity: VisualDensity.compact,
+              ),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(
+                context.l10n.newMemberButton,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: colors.brandPrimary,
-        foregroundColor: Colors.white,
-        onPressed: _openAddMemberSheet,
-        icon: const Icon(Icons.person_add_alt_1),
-        label: Text(
-          context.l10n.newMemberButton,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
       body: Padding(
-        padding: AppSpacing.screenPadding,
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.md,
+          0,
+        ),
         child: Column(
           children: [
-            GymTextField(
-              label: context.l10n.search,
-              hint: context.l10n.searchMemberHint,
-              prefixIcon: Icons.search_rounded,
-              onChanged: (val) =>
-                  ref.read(membersProvider.notifier).onSearchChanged(val),
+            // Clean rounded search bar without redundant outer label
+            Container(
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+                  width: 1,
+                ),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) {
+                  setState(() {});
+                  ref.read(membersProvider.notifier).onSearchChanged(val);
+                },
+                decoration: InputDecoration(
+                  hintText: context.l10n.searchMemberHint,
+                  hintStyle: TextStyle(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                            ref
+                                .read(membersProvider.notifier)
+                                .onSearchChanged('');
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // Sort & Filter Chips Row
+            // Cohesive Filter & Sort Strip
             Row(
               children: [
                 _SortTriggerButton(
@@ -133,13 +221,12 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
+                    physics: const ClampingScrollPhysics(),
                     child: Row(
                       children: [
                         _FilterChipItem(
                           label: context.l10n.filterAll,
                           isSelected: state.selectedFilter == MemberFilter.all,
-                          color: colors.brandPrimary,
                           onTap: () {
                             HapticFeedback.selectionClick();
                             ref
@@ -151,7 +238,6 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
                         _FilterChipItem(
                           label: context.l10n.filterActive,
                           isSelected: state.selectedFilter == MemberFilter.active,
-                          color: colors.active,
                           onTap: () {
                             HapticFeedback.selectionClick();
                             ref
@@ -163,7 +249,6 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
                         _FilterChipItem(
                           label: context.l10n.filterExpired,
                           isSelected: state.selectedFilter == MemberFilter.expired,
-                          color: colors.expired,
                           onTap: () {
                             HapticFeedback.selectionClick();
                             ref
@@ -175,7 +260,6 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
                         _FilterChipItem(
                           label: context.l10n.filterTodayAttendance,
                           isSelected: state.selectedFilter == MemberFilter.today,
-                          color: colors.brandPrimary,
                           onTap: () {
                             HapticFeedback.selectionClick();
                             ref
@@ -202,7 +286,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
                           Icon(
                             Icons.group_off_rounded,
                             size: 64,
-                            color: Colors.grey.shade300,
+                            color: colorScheme.outlineVariant,
                           ),
                           const SizedBox(height: AppSpacing.md),
                           Text(
@@ -210,7 +294,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
                                 ? context.l10n.noMembersYetList
                                 : context.l10n.noMembersFound,
                             style: TextStyle(
-                              color: Colors.grey.shade500,
+                              color: colorScheme.onSurfaceVariant,
                               fontSize: 16,
                             ),
                           ),
@@ -223,6 +307,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
                       child: ListView.separated(
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(bottom: 110),
                         itemCount:
                             displayMembers.length +
                             (state.isLoadingMore ? 1 : 0),
@@ -254,19 +339,17 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
 class _FilterChipItem extends StatelessWidget {
   final String label;
   final bool isSelected;
-  final Color color;
   final VoidCallback onTap;
 
   const _FilterChipItem({
     required this.label,
     required this.isSelected,
-    required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return InkWell(
       onTap: onTap,
@@ -276,14 +359,14 @@ class _FilterChipItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected
-              ? color
-              : color.withValues(alpha: isDark ? 0.12 : 0.06),
+              ? colorScheme.primary
+              : colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? color
-                : color.withValues(alpha: isDark ? 0.25 : 0.18),
-            width: 1.2,
+                ? colorScheme.primary
+                : colorScheme.outlineVariant.withValues(alpha: 0.4),
+            width: 1,
           ),
         ),
         child: Text(
@@ -292,8 +375,8 @@ class _FilterChipItem extends StatelessWidget {
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
             color: isSelected
-                ? Colors.white
-                : (isDark ? Colors.white.withValues(alpha: 0.9) : color),
+                ? colorScheme.onPrimary
+                : colorScheme.onSurfaceVariant,
           ),
         ),
       ),
@@ -301,140 +384,285 @@ class _FilterChipItem extends StatelessWidget {
   }
 }
 
-class _MemberCardItem extends StatelessWidget {
+enum _MemberSubscriptionStatus {
+  active,
+  expiringSoon,
+  expired,
+}
+
+class _MemberCardItem extends ConsumerStatefulWidget {
   final MemberModel member;
   const _MemberCardItem({required this.member});
 
   @override
+  ConsumerState<_MemberCardItem> createState() => _MemberCardItemState();
+}
+
+class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
+  bool _isCheckingIn = false;
+
+  _MemberSubscriptionStatus get _status {
+    final statusStr = widget.member.subscriptionStatus.toLowerCase();
+    if (statusStr != 'active') {
+      return _MemberSubscriptionStatus.expired;
+    }
+    if (widget.member.subscriptionEndDate != null) {
+      final endDate = DateTime.tryParse(widget.member.subscriptionEndDate!);
+      if (endDate != null) {
+        final daysRemaining = endDate.difference(DateTime.now()).inDays;
+        if (daysRemaining < 0) {
+          return _MemberSubscriptionStatus.expired;
+        } else if (daysRemaining <= 3) {
+          return _MemberSubscriptionStatus.expiringSoon;
+        }
+      }
+    }
+    return _MemberSubscriptionStatus.active;
+  }
+
+  Future<void> _handleCheckIn() async {
+    setState(() => _isCheckingIn = true);
+    try {
+      final message =
+          await ref.read(attendanceApiProvider).checkIn(widget.member.id);
+
+      if (!mounted) return;
+
+      ref.invalidate(dashboardStatsProvider);
+      ref.read(membersProvider.notifier).resetFilters();
+
+      await showCheckInSuccessAnimation(
+        context,
+        memberName: widget.member.fullName,
+        message: message,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: context.gymColors.expired,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isCheckingIn = false);
+    }
+  }
+
+  void _handleRenew() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.gymColors.surfaceBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => RenewSubscriptionSheet(member: widget.member),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final gymColors = context.gymColors;
-    final isActive = member.subscriptionStatus.toLowerCase() == 'active';
-    final statusColor = isActive ? gymColors.active : gymColors.expired;
+    final colorScheme = Theme.of(context).colorScheme;
+    final status = _status;
+    final l10n = context.l10n;
+
+    // Status colors and label
+    final Color statusColor;
+    final String statusLabel;
+    switch (status) {
+      case _MemberSubscriptionStatus.active:
+        statusColor = const Color(0xFF16A34A); // Crisp Green
+        statusLabel = l10n.activeStatus;
+        break;
+      case _MemberSubscriptionStatus.expiringSoon:
+        statusColor = const Color(0xFFD97706); // Crisp Amber
+        statusLabel = l10n.expiringSoonStatus;
+        break;
+      case _MemberSubscriptionStatus.expired:
+        statusColor = const Color(0xFFDC2626); // Crisp Red
+        statusLabel = l10n.expiredStatus;
+        break;
+    }
+
+    final initialLetter = widget.member.fullName.trim().isNotEmpty
+        ? widget.member.fullName.trim()[0].toUpperCase()
+        : '?';
 
     return GymCard(
       onTap: () {
         context.pushNamed(
           'memberProfile',
-          extra: member, // بنباصي الـ MemberModel هنا
+          extra: widget.member,
         );
       },
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: gymColors.brandPrimary.withValues(alpha: 0.08),
-            child: Text(
-              member.fullName.trim().isNotEmpty
-                  ? member.fullName.trim()[0].toUpperCase()
-                  : '?',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 20,
-                color: gymColors.brandPrimary,
+          // 1. Leading Avatar: 44dp squircle badge
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: Text(
+                initialLetter,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: colorScheme.primary,
+                ),
               ),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
+
+          // 2. Middle Info Column
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  member.fullName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
+                // Row 1: Name + Status Pill Badge
                 Row(
                   children: [
-                    Icon(
-                      Icons.phone_android_rounded,
-                      size: 14,
-                      color: Colors.grey.shade500,
+                    Expanded(
+                      child: Text(
+                        widget.member.fullName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      member.phoneNumber,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 13,
-                        letterSpacing: 0.5,
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: statusColor.withValues(alpha: 0.25),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        statusLabel,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                if (member.activePlanName != null) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today_rounded,
-                        size: 13,
-                        color: Colors.grey.shade500,
+                const SizedBox(height: 4),
+
+                // Row 2: Phone with subtle phone icon + Plan & Expiry Date
+                Row(
+                  children: [
+                    Icon(
+                      Icons.phone_rounded,
+                      size: 13,
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      widget.member.phoneNumber,
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                        letterSpacing: 0.3,
                       ),
-                      const SizedBox(width: 4),
+                    ),
+                    if (widget.member.activePlanName != null) ...[
+                      Text(
+                        ' • ',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          fontSize: 12,
+                        ),
+                      ),
                       Expanded(
                         child: Text(
-                          '${member.activePlanName} • ${context.l10n.expiresOn(member.subscriptionEndDate ?? '')}',
+                          '${widget.member.activePlanName} (${_formatExpiryDate(widget.member.subscriptionEndDate)})',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade600,
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
-                  ),
-                ],
+                  ],
+                ),
               ],
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          if (!isActive) ...[
+
+          // 3. Quick Action Trailing Button
+          if (status == _MemberSubscriptionStatus.active)
+            IconButton.filledTonal(
+              onPressed: _isCheckingIn ? null : _handleCheckIn,
+              icon: _isCheckingIn
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.fingerprint_rounded, size: 20),
+              tooltip: l10n.checkIn,
+              style: IconButton.styleFrom(
+                backgroundColor: colorScheme.primaryContainer,
+                foregroundColor: colorScheme.primary,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.all(8),
+              ),
+            )
+          else ...[
+            IconButton.filledTonal(
+              onPressed: _handleRenew,
+              icon: const Icon(Icons.autorenew_rounded, size: 20),
+              tooltip: l10n.renewPlan,
+              style: IconButton.styleFrom(
+                backgroundColor: colorScheme.secondaryContainer,
+                foregroundColor: colorScheme.onSecondaryContainer,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.all(8),
+              ),
+            ),
             IconButton(
               icon: Icon(
                 Icons.chat_bubble_outline_rounded,
-                color: gymColors.active,
+                color: const Color(0xFF16A34A),
                 size: 20,
               ),
-              tooltip: context.l10n.sendWhatsappReminder,
+              tooltip: l10n.sendWhatsappReminder,
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(
-                minWidth: 36,
-                minHeight: 36,
+                minWidth: 32,
+                minHeight: 32,
               ),
               onPressed: () {
                 WhatsAppHelper.sendRenewalReminder(
                   context,
-                  phoneNumber: member.phoneNumber,
-                  memberName: member.fullName,
+                  phoneNumber: widget.member.phoneNumber,
+                  memberName: widget.member.fullName,
                 );
               },
             ),
-            const SizedBox(width: AppSpacing.xs),
           ],
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: statusColor.withValues(alpha: 0.2)),
-            ),
-            child: Text(
-              isActive ? context.l10n.activeStatus : context.l10n.expiredStatus,
-              style: TextStyle(
-                color: statusColor,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -452,8 +680,7 @@ class _SortTriggerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.gymColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
     final isCustomSort = selectedSort != MemberSortOption.newest;
 
     return Tooltip(
@@ -466,14 +693,14 @@ class _SortTriggerButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
             color: isCustomSort
-                ? colors.brandPrimary.withValues(alpha: isDark ? 0.25 : 0.12)
-                : colors.brandPrimary.withValues(alpha: isDark ? 0.12 : 0.06),
+                ? colorScheme.primaryContainer
+                : colorScheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: isCustomSort
-                  ? colors.brandPrimary
-                  : colors.brandPrimary.withValues(alpha: isDark ? 0.25 : 0.18),
-              width: isCustomSort ? 1.5 : 1.2,
+                  ? colorScheme.primary
+                  : colorScheme.outlineVariant.withValues(alpha: 0.4),
+              width: 1,
             ),
           ),
           child: Row(
@@ -486,10 +713,8 @@ class _SortTriggerButton extends StatelessWidget {
                     Icons.sort_rounded,
                     size: 18,
                     color: isCustomSort
-                        ? colors.brandPrimary
-                        : (isDark
-                            ? Colors.white.withValues(alpha: 0.9)
-                            : colors.brandPrimary),
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
                   ),
                   if (isCustomSort)
                     Positioned(
@@ -499,12 +724,8 @@ class _SortTriggerButton extends StatelessWidget {
                         width: 7,
                         height: 7,
                         decoration: BoxDecoration(
-                          color: colors.active,
+                          color: colorScheme.primary,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colors.surfaceBackground,
-                            width: 1.2,
-                          ),
                         ),
                       ),
                     ),
@@ -517,10 +738,8 @@ class _SortTriggerButton extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: isCustomSort ? FontWeight.bold : FontWeight.w600,
                   color: isCustomSort
-                      ? colors.brandPrimary
-                      : (isDark
-                          ? Colors.white.withValues(alpha: 0.9)
-                          : colors.brandPrimary),
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -529,4 +748,17 @@ class _SortTriggerButton extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatExpiryDate(String? rawDate) {
+  if (rawDate == null || rawDate.isEmpty) return '';
+  final parsed = DateTime.tryParse(rawDate);
+  if (parsed != null) {
+    return DateFormat('yyyy-MM-dd').format(parsed);
+  }
+  // Fallback: if already starts with yyyy-MM-dd, take first 10 chars
+  if (rawDate.length >= 10) {
+    return rawDate.substring(0, 10);
+  }
+  return rawDate;
 }

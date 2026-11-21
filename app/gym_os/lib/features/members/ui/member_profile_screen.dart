@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:gym_os/core/ui/atoms/gym_button.dart';
 import 'package:gym_os/core/ui/atoms/gym_card.dart';
 import 'package:gym_os/core/utils/whatsapp_helper.dart';
+import 'package:intl/intl.dart';
 import 'package:gym_os/features/attendance/ui/widgets/check_in_success_dialog.dart';
 import 'package:gym_os/features/home/providers/dashboard_provider.dart';
 import 'package:gym_os/features/members/providers/members_provider.dart';
@@ -65,6 +66,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
 
       // تحديث أرقام الداشبورد فوراً (متواجد الآن + حضور اليوم)
       ref.invalidate(dashboardStatsProvider);
+      ref.read(membersProvider.notifier).resetFilters();
 
       // تشغيل أنيميشن تسجيل الحضور
       await showCheckInSuccessAnimation(
@@ -188,7 +190,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                   _DetailRow(
                     icon: Icons.calendar_today_rounded,
                     label: context.l10n.endDate,
-                    value: widget.member.subscriptionEndDate!,
+                    value: _formatProfileEndDate(widget.member.subscriptionEndDate!),
                   ),
                 ],
               ],
@@ -223,7 +225,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
 
               if (!context.mounted) return;
               if (result == true) {
-                ref.read(membersProvider.notifier).loadInitial();
+                ref.read(membersProvider.notifier).resetFilters();
                 ref.invalidate(dashboardStatsProvider);
                 context.pop();
               }
@@ -295,3 +297,15 @@ class _DetailRow extends StatelessWidget {
     );
   }
 }
+
+String _formatProfileEndDate(String rawDate) {
+  final parsed = DateTime.tryParse(rawDate);
+  if (parsed != null) {
+    return DateFormat('yyyy-MM-dd').format(parsed);
+  }
+  if (rawDate.length >= 10) {
+    return rawDate.substring(0, 10);
+  }
+  return rawDate;
+}
+

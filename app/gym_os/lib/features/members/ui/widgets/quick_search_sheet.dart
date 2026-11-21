@@ -25,6 +25,15 @@ class _QuickSearchSheetState extends ConsumerState<QuickSearchSheet> {
   String _query = '';
 
   @override
+  void initState() {
+    super.initState();
+    // Reset filters so the quick search starts with all members
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(membersProvider.notifier).resetFilters();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.gymColors;
 

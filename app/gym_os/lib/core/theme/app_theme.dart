@@ -122,10 +122,12 @@ class AppTheme {
   ); // Blue 400 for dark theme
   static const Color defaultAccent = Color(0xFFF97316); // Energy accent
 
+  static const String defaultFontFamily = 'Azer';
+
   // ==========================================
   // 1. Light Theme
   // ==========================================
-  static ThemeData lightTheme({Color? tenantPrimaryColor}) {
+  static ThemeData lightTheme({Color? tenantPrimaryColor, String? fontFamily}) {
     final primary = tenantPrimaryColor ?? defaultPrimary;
     const surfaceLevel0 = Color(0xFFF8FAFC);
     const surfaceLevel1 = Color(0xFFFFFFFF);
@@ -143,11 +145,21 @@ class AppTheme {
       surface: surfaceLevel0,
     );
 
-    return ThemeData(
+    final baseTheme = ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      fontFamily: fontFamily,
+    );
+
+    return baseTheme.copyWith(
       scaffoldBackgroundColor: surfaceLevel0,
-      appBarTheme: const AppBarTheme(
+      textTheme: fontFamily != null
+          ? baseTheme.textTheme.apply(fontFamily: fontFamily)
+          : baseTheme.textTheme,
+      primaryTextTheme: fontFamily != null
+          ? baseTheme.primaryTextTheme.apply(fontFamily: fontFamily)
+          : baseTheme.primaryTextTheme,
+      appBarTheme: AppBarTheme(
         backgroundColor: surfaceLevel0,
         elevation: 0,
         scrolledUnderElevation: 1,
@@ -156,6 +168,7 @@ class AppTheme {
           color: textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.bold,
+          fontFamily: fontFamily,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -202,7 +215,7 @@ class AppTheme {
   // ==========================================
   // 2. Dark Theme
   // ==========================================
-  static ThemeData darkTheme({Color? tenantPrimaryColor}) {
+  static ThemeData darkTheme({Color? tenantPrimaryColor, String? fontFamily}) {
     final primary = tenantPrimaryColor ?? defaultDarkPrimary;
 
     // Neutral dark surfaces differentiated by tone (not shadows or neon tints)
@@ -226,11 +239,21 @@ class AppTheme {
       surface: surfaceLevel0,
     );
 
-    return ThemeData(
+    final baseTheme = ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      fontFamily: fontFamily,
+    );
+
+    return baseTheme.copyWith(
       scaffoldBackgroundColor: surfaceLevel0,
-      appBarTheme: const AppBarTheme(
+      textTheme: fontFamily != null
+          ? baseTheme.textTheme.apply(fontFamily: fontFamily)
+          : baseTheme.textTheme,
+      primaryTextTheme: fontFamily != null
+          ? baseTheme.primaryTextTheme.apply(fontFamily: fontFamily)
+          : baseTheme.primaryTextTheme,
+      appBarTheme: AppBarTheme(
         backgroundColor: surfaceLevel0,
         elevation: 0,
         scrolledUnderElevation: 1,
@@ -239,6 +262,7 @@ class AppTheme {
           color: textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.bold,
+          fontFamily: fontFamily,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

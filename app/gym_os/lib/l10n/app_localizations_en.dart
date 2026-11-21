@@ -195,7 +195,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get search => 'Search';
 
   @override
-  String get searchMemberHint => 'Type name or phone number...';
+  String get searchMemberHint => 'Search by name or phone...';
 
   @override
   String get noMembersFound => 'No results found';
@@ -570,4 +570,83 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dropInNotesOptional => 'Notes (optional)';
+
+  @override
+  String get last7Days => 'Last 7 Days';
+
+  @override
+  String get attendance => 'Attendance';
+
+  @override
+  String get revenue => 'Revenue';
+
+  @override
+  String weeklyTotalAttendance(int count) {
+    return 'Total: $count check-ins';
+  }
+
+  @override
+  String weeklyTotalRevenue(String amount) {
+    return 'Total: $amount';
+  }
+
+  @override
+  String get noActivityYet => 'No activity data yet';
+
+  @override
+  String selectedDaySummary(String date, String value) {
+    return '$date: $value';
+  }
+
+  @override
+  String get syncStatusSynced => 'Synced';
+
+  @override
+  String syncStatusSyncing(int count) {
+    return 'Syncing ($count)';
+  }
+
+  @override
+  String get syncStatusOffline => 'Offline';
+
+  @override
+  String syncStatusOfflineWithQueued(int count) {
+    return 'Offline • $count queued';
+  }
+
+  @override
+  String get syncStatusChecking => 'Checking sync status...';
+
+  @override
+  String get appFont => 'App Font';
+
+  @override
+  String get fontDefault => 'Default';
+
+  @override
+  String get fontAzer => 'Azer';
+
+  @override
+  String get fontAlyamama => 'Al-Yamama';
+
+  @override
+  String get accentColor => 'Accent Color';
+
+  @override
+  String get colorRoyalBlue => 'Royal Blue';
+
+  @override
+  String get colorEnergyOrange => 'Energy Orange';
+
+  @override
+  String get colorEmerald => 'Emerald';
+
+  @override
+  String get colorCrimson => 'Crimson';
+
+  @override
+  String get colorViolet => 'Violet';
+
+  @override
+  String get expiringSoonStatus => 'Expiring Soon';
 }
