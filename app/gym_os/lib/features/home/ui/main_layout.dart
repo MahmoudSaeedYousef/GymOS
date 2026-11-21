@@ -31,6 +31,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   late int _currentIndex;
   late final PageController _pageController;
   bool _isAnimatingPage = false;
+  DateTime? _lastBackPressTime;
 
   // Default screens kept alive across tabs via AutomaticKeepAliveClientMixin
   static const List<Widget> _defaultScreens = [
@@ -109,14 +110,43 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     }
   }
 
+  void _handleBackNavigation() {
+    if (_currentIndex != 0) {
+      _onTabSelected(0);
+      return;
+    }
+
+    final now = DateTime.now();
+    if (_lastBackPressTime == null ||
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.pressBackAgainToExit),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      SystemNavigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final pages = widget.children ?? _defaultScreens;
 
-    return Scaffold(
-      extendBody: true,
-      body: PageView.builder(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBackNavigation();
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: PageView.builder(
         controller: _pageController,
         physics: const BouncingScrollPhysics(),
         onPageChanged: _onPageChanged,
@@ -171,6 +201,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }

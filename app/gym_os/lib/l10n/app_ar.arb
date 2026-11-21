@@ -342,5 +342,20 @@
   "colorEmerald": "زمردي",
   "colorCrimson": "قرمزي",
   "colorViolet": "بنفسجي",
-  "expiringSoonStatus": "ينتهي قريباً"
+  "expiringSoonStatus": "ينتهي قريباً",
+  "signOutConfirmationTitle": "تسجيل الخروج",
+  "signOutConfirmationMessage": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
+  "signOutUnsyncedWarning": "تنبيه: يوجد {count} عمليات محلية لم تتم مزامنتها بعد. قد تفقد هذه البيانات في حال تسجيل الخروج الآن.",
+  "@signOutUnsyncedWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pressBackAgainToExit": "اضغط مرة أخرى للخروج",
+  "discardChangesTitle": "تراجع عن التغييرات",
+  "discardChangesMessage": "هل تريد تجاهل التغييرات الحالية؟ ستفقد البيانات التي قمت بإدخالها.",
+  "discard": "تجاهل",
+  "keepEditing": "متابعة التعديل"
 }

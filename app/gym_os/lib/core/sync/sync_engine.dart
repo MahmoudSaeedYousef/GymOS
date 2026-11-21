@@ -389,7 +389,62 @@ class SyncEngine {
       await db.membersDao.upsertMembersFromServer(companions);
     } catch (_) {}
 
-    // 3. Pull Current Inside Attendance
+    // 3. Pull Historical Attendance (Last 30 Days) & Current Inside
+    try {
+      final nowUtc = DateTime.now().toUtc();
+      final thirtyDaysAgoUtc = nowUtc.subtract(const Duration(days: 30));
+
+      final attRes = await dio.get(
+        '/api/attendance',
+        queryParameters: {
+          'startDate': thirtyDaysAgoUtc.toIso8601String(),
+          'endDate': nowUtc.toIso8601String(),
+        },
+      );
+      final data = attRes.data;
+      if (data is List) {
+        final companions = data.map((item) {
+          final map = item as Map<String, dynamic>;
+          final rawDate = map['checkInTime'];
+          DateTime checkIn = DateTime.now();
+          if (rawDate != null) {
+            final parsed = DateTime.tryParse(rawDate.toString());
+            if (parsed != null) {
+              checkIn = parsed.isUtc
+                  ? parsed.toLocal()
+                  : (DateTime.tryParse('${rawDate}Z')?.toLocal() ?? parsed);
+            }
+          }
+
+          final rawCheckOut = map['checkOutTime'];
+          DateTime? checkOut;
+          if (rawCheckOut != null) {
+            final parsedOut = DateTime.tryParse(rawCheckOut.toString());
+            if (parsedOut != null) {
+              checkOut = parsedOut.isUtc
+                  ? parsedOut.toLocal()
+                  : (DateTime.tryParse('${rawCheckOut}Z')?.toLocal() ??
+                      parsedOut);
+            }
+          }
+
+          return LocalAttendanceCompanion.insert(
+            id: map['recordId']?.toString() ?? map['id']?.toString() ?? '',
+            memberId: Value(map['memberId']?.toString()),
+            memberName:
+                map['fullName']?.toString() ?? map['memberName']?.toString() ?? '',
+            memberPhone: Value(map['phoneNumber']?.toString()),
+            checkInTime: checkIn,
+            checkOutTime: Value(checkOut),
+            isDirty: const Value(false),
+          );
+        }).toList();
+
+        await db.attendanceDao.upsertAttendanceFromServer(companions);
+      }
+    } catch (_) {}
+
+    // Fallback/Supplement: Pull Current Inside Attendance if needed
     try {
       final attRes = await dio.get('/api/attendance/current-inside');
       final data = attRes.data;

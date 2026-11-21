@@ -12,7 +12,7 @@ Future<void> showCheckInSuccessAnimation(
   required String memberName,
   String? message,
 }) {
-  HapticFeedback.mediumImpact(); // هزة تأكيد فخمة في الموبايل
+  HapticFeedback.lightImpact();
 
   return showGeneralDialog(
     context: context,

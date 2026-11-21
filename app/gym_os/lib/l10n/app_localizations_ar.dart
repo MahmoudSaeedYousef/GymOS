@@ -649,4 +649,32 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get expiringSoonStatus => 'ينتهي قريباً';
+
+  @override
+  String get signOutConfirmationTitle => 'تسجيل الخروج';
+
+  @override
+  String get signOutConfirmationMessage =>
+      'هل أنت متأكد من رغبتك في تسجيل الخروج؟';
+
+  @override
+  String signOutUnsyncedWarning(int count) {
+    return 'تنبيه: يوجد $count عمليات محلية لم تتم مزامنتها بعد. قد تفقد هذه البيانات في حال تسجيل الخروج الآن.';
+  }
+
+  @override
+  String get pressBackAgainToExit => 'اضغط مرة أخرى للخروج';
+
+  @override
+  String get discardChangesTitle => 'تراجع عن التغييرات';
+
+  @override
+  String get discardChangesMessage =>
+      'هل تريد تجاهل التغييرات الحالية؟ ستفقد البيانات التي قمت بإدخالها.';
+
+  @override
+  String get discard => 'تجاهل';
+
+  @override
+  String get keepEditing => 'متابعة التعديل';
 }

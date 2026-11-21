@@ -27,6 +27,49 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
   PaymentMethod _selectedPaymentMethod = PaymentMethod.cash;
   bool _isSubmitting = false;
 
+  bool get _isDirty {
+    return _nameController.text.trim().isNotEmpty ||
+        _phoneController.text.trim().isNotEmpty ||
+        _amountController.text.trim().isNotEmpty ||
+        _selectedPlanId != null;
+  }
+
+  Future<bool> _confirmDiscardIfNeeded() async {
+    if (!_isDirty) return true;
+
+    final l10n = context.l10n;
+    final shouldDiscard = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          icon: const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 32,
+          ),
+          title: Text(l10n.discardChangesTitle),
+          content: Text(l10n.discardChangesMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: Text(l10n.keepEditing),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: Text(l10n.discard),
+            ),
+          ],
+        );
+      },
+    );
+
+    return shouldDiscard ?? false;
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -94,8 +137,17 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      decoration: BoxDecoration(
+    return PopScope(
+      canPop: !_isDirty,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldDiscard = await _confirmDiscardIfNeeded();
+        if (shouldDiscard && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
         color: colors.surfaceBackground,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -328,7 +380,8 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildPaymentMethodSelector(

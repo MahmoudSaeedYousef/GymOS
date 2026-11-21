@@ -179,7 +179,7 @@ void main() {
       expect(find.text('نشط'), findsOneWidget);
       expect(find.text('ينتهي قريباً'), findsOneWidget);
       expect(find.text('منتهي'), findsOneWidget);
-      expect(find.text('لا توجد باقة'), findsNWidgets(2));
+      expect(find.text('بدون باقة'), findsNWidgets(2));
 
       // Quick action check-in fingerprint button on active member
       expect(find.byIcon(Icons.fingerprint_rounded), findsOneWidget);
