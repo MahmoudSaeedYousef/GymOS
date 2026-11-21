@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:gym_os/core/database/app_database.dart';
 import 'package:gym_os/core/database/database_provider.dart';
+import 'package:gym_os/core/sync/sync_provider.dart';
 import 'package:gym_os/features/auth/services/auth_service.dart';
 
 // حالات المصادقة
@@ -18,9 +19,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final AuthService _authService;
   final AppDatabase? _db;
+  final SyncEngine? _syncEngine;
   static const _tokenKey = 'jwt_token';
 
-  AuthNotifier(this._authService, [this._db])
+  AuthNotifier(this._authService, [this._db, this._syncEngine])
     : super(AuthState(status: AuthStatus.initial)) {
     _checkAuthStatus();
   }
@@ -46,6 +48,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       // 3. نحدث حالة التطبيق (وبالتالي الـ Router هينقلنا للشاشة الرئيسية فوراً)
       state = AuthState(status: AuthStatus.authenticated, token: token);
+
+      // 4. Trigger immediate background sync (pull fresh stats, members, attendance, payments)
+      _syncEngine?.syncAll();
     } catch (e) {
       // هنا بنرفع الخطأ للـ UI عشان نظهر رسالة للمستخدم
       rethrow;
@@ -66,5 +71,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final authService = ref.watch(authServiceProvider);
   final db = ref.watch(appDatabaseProvider);
-  return AuthNotifier(authService, db);
+  final syncEngine = ref.watch(syncEngineProvider);
+  return AuthNotifier(authService, db, syncEngine);
 });

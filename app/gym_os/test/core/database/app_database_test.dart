@@ -484,6 +484,64 @@ void main() {
       expect(payments.first.amountPaid, 600.0);
       expect(payments.first.isDirty, isTrue);
     });
+
+    test('reconcilePaymentId replaces local temporary ID and keeps single row', () async {
+      final now = DateTime.now();
+      const localId = 'temp-local-pay-id';
+      const serverId = 'server-pay-id-xyz';
+
+      await db.into(db.localPayments).insert(
+        LocalPaymentsCompanion.insert(
+          id: localId,
+          amountPaid: 100.0,
+          method: 1,
+          type: 3,
+          createdAt: now,
+          isDirty: const Value(false),
+        ),
+      );
+
+      await db.paymentsDao.reconcilePaymentId(localId, serverId);
+
+      final payments = await db.select(db.localPayments).get();
+      expect(payments.length, 1);
+      expect(payments.first.id, serverId);
+      expect(payments.first.isDirty, isFalse);
+    });
+
+    test('upsertPaymentsFromServer deduplicates temporary clean payment row', () async {
+      final now = DateTime.now();
+      const localId = 'temp-local-pay-123';
+      const serverId = 'server-pay-456';
+
+      await db.into(db.localPayments).insert(
+        LocalPaymentsCompanion.insert(
+          id: localId,
+          memberName: const Value('DropIn Guest'),
+          amountPaid: 50.0,
+          method: 1,
+          type: 3,
+          createdAt: now,
+          isDirty: const Value(false),
+        ),
+      );
+
+      await db.paymentsDao.upsertPaymentsFromServer([
+        LocalPaymentsCompanion.insert(
+          id: serverId,
+          memberName: const Value('DropIn Guest'),
+          amountPaid: 50.0,
+          method: 1,
+          type: 1,
+          createdAt: now,
+          isDirty: const Value(false),
+        ),
+      ]);
+
+      final allPayments = await db.select(db.localPayments).get();
+      expect(allPayments.length, 1);
+      expect(allPayments.first.id, serverId);
+    });
   });
 
   group('Riverpod Providers Tests', () {

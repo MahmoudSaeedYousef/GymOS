@@ -618,5 +618,107 @@ void main() {
           .getSingle();
       expect(paymentAfter.isDirty, isFalse);
     });
+
+    test('Pushing drop-in and pulling server payments does not leave duplicate rows in localPayments', () async {
+      connectivity.emit([ConnectivityResult.none]);
+
+      const serverGeneratedPaymentId = 'server-pay-uuid-777';
+
+      // Setup responses for push (returns server paymentId) and pull (/api/payments)
+      httpAdapter.handler = (options) {
+        if (options.path.contains('drop-in')) {
+          return ResponseBody.fromString(
+            jsonEncode({
+              'succeeded': true,
+              'paymentId': serverGeneratedPaymentId,
+            }),
+            200,
+            headers: {Headers.contentTypeHeader: [Headers.jsonContentType]},
+          );
+        }
+        if (options.path.contains('/api/payments')) {
+          return ResponseBody.fromString(
+            jsonEncode({
+              'totalAmount': 50.0,
+              'cashTotal': 50.0,
+              'instaPayTotal': 0.0,
+              'vodafoneCashTotal': 0.0,
+              'visaTotal': 0.0,
+              'items': [
+                {
+                  'id': serverGeneratedPaymentId,
+                  'memberName': 'Single DropIn Guest',
+                  'memberPhone': '',
+                  'planName': 'حصة مفردة',
+                  'amount': 50.0,
+                  'method': 1,
+                  'paymentDate': DateTime.now().toIso8601String(),
+                  'notes': 'حصة مفردة'
+                }
+              ]
+            }),
+            200,
+            headers: {Headers.contentTypeHeader: [Headers.jsonContentType]},
+          );
+        }
+        if (options.path.contains('/api/plans')) {
+          return ResponseBody.fromString('[]', 200, headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          });
+        }
+        if (options.path.contains('/api/gym/members')) {
+          return ResponseBody.fromString('[]', 200, headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          });
+        }
+        if (options.path.contains('/api/attendance')) {
+          return ResponseBody.fromString('[]', 200, headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          });
+        }
+        if (options.path.contains('/api/dashboard/stats')) {
+          return ResponseBody.fromString(
+            jsonEncode({
+              'activeMembersCount': 10,
+              'expiredSubscriptionsCount': 0,
+              'todayCheckInsCount': 1,
+              'monthlyRevenue': 50.0,
+              'currentInside': 1,
+              'todayRevenue': 50.0,
+              'monthlyDropInRevenue': 50.0,
+              'last7DaysAttendance': [],
+            }),
+            200,
+            headers: {Headers.contentTypeHeader: [Headers.jsonContentType]},
+          );
+        }
+        return ResponseBody.fromString('{"succeeded": true}', 200, headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        });
+      };
+
+      final service = DashboardApiService(dio, db, syncEngine);
+
+      const request = RecordDropInRequest(
+        operationId: 'op-drop-no-dup',
+        customAmount: 50.0,
+        method: 1,
+        guestName: 'Single DropIn Guest',
+      );
+
+      final result = await service.recordDropInVisit(request);
+      expect(result.succeeded, isTrue);
+
+      connectivity.emit([ConnectivityResult.wifi]);
+      await syncEngine.syncAll();
+
+      // Check local payments in Drift
+      final allPayments = await db.select(db.localPayments).get();
+      // Must only contain 1 row, not 2!
+      expect(allPayments.length, 1);
+      expect(allPayments.first.amountPaid, 50.0);
+      expect(allPayments.first.id, serverGeneratedPaymentId);
+      expect(allPayments.first.isDirty, isFalse);
+    });
   });
 }
