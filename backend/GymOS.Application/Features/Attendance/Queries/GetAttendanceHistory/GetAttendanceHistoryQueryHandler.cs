@@ -15,8 +15,7 @@ public class GetAttendanceHistoryQueryHandler(IGymDbContext context)
         var now = DateTime.UtcNow;
         var end = request.EndDate ?? now;
         var start = request.StartDate ?? now.AddDays(-30);
-
-        return await context.AttendanceRecords
+        var records = await context.AttendanceRecords
             .AsNoTracking()
             .Where(a => a.CheckInTime >= start && a.CheckInTime <= end)
             .OrderByDescending(a => a.CheckInTime)
@@ -29,5 +28,11 @@ public class GetAttendanceHistoryQueryHandler(IGymDbContext context)
                 a.CheckOutTime
             ))
             .ToListAsync(cancellationToken);
+
+        return records
+            .DistinctBy(d => d.MemberId)
+            .ToList();
+
+
     }
 }

@@ -67,7 +67,73 @@ class DashboardApiService {
       }
     }
 
-    // 3. Return merged stats with local unsynced check-ins (deduplicated by memberId)
+    // 3. When serverStats is available, trust it directly and only merge unsynced local check-ins
+    if (serverStats != null) {
+      if (_db != null) {
+        final now = DateTime.now();
+        final todayStart = DateTime(now.year, now.month, now.day);
+        final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+
+        // Query ONLY unsynced (isDirty == true) local attendance rows for today
+        final unsyncedTodayAttendance = await (_db.select(_db.localAttendance)
+              ..where((t) =>
+                  t.isDirty.equals(true) &
+                  t.checkInTime.isBiggerOrEqualValue(todayStart) &
+                  t.checkInTime.isSmallerOrEqualValue(todayEnd)))
+            .get();
+
+        final unsyncedDistinctMemberIds = <String>{};
+        for (final a in unsyncedTodayAttendance) {
+          final id = (a.memberId != null && a.memberId!.isNotEmpty)
+              ? a.memberId!
+              : a.id;
+          unsyncedDistinctMemberIds.add(id);
+        }
+
+        final addedUnsyncedCount = unsyncedDistinctMemberIds.length;
+        final mergedTodayCount =
+            serverStats.todayCheckInsCount + addedUnsyncedCount;
+
+        List<DailyAttendanceStat>? mergedLast7Days =
+            serverStats.last7DaysAttendance;
+        if (mergedLast7Days != null && addedUnsyncedCount > 0) {
+          mergedLast7Days = List<DailyAttendanceStat>.from(mergedLast7Days);
+          final todayIdx = mergedLast7Days.indexWhere((stat) =>
+              stat.date.year == now.year &&
+              stat.date.month == now.month &&
+              stat.date.day == now.day);
+
+          if (todayIdx != -1) {
+            final existing = mergedLast7Days[todayIdx];
+            mergedLast7Days[todayIdx] = DailyAttendanceStat(
+              date: existing.date,
+              count: existing.count + addedUnsyncedCount,
+            );
+          } else {
+            mergedLast7Days.add(
+              DailyAttendanceStat(
+                date: DateTime(now.year, now.month, now.day),
+                count: mergedTodayCount,
+              ),
+            );
+          }
+        }
+
+        return DashboardStatsModel(
+          activeMembersCount: serverStats.activeMembersCount,
+          expiredSubscriptionsCount: serverStats.expiredSubscriptionsCount,
+          todayCheckInsCount: mergedTodayCount,
+          monthlyRevenue: serverStats.monthlyRevenue,
+          currentInside: serverStats.currentInside,
+          todayRevenue: serverStats.todayRevenue,
+          monthlyDropInRevenue: serverStats.monthlyDropInRevenue,
+          last7DaysAttendance: mergedLast7Days,
+        );
+      }
+      return serverStats;
+    }
+
+    // 4. Fallback: only when serverStats == null, compute counts from local Drift tables
     if (_db != null) {
       final now = DateTime.now();
       final todayStart = DateTime(now.year, now.month, now.day);
@@ -79,14 +145,13 @@ class DashboardApiService {
       final activeCount = allMembers.where((m) => m.status == 1).length;
       final expiredCount = allMembers.where((m) => m.status != 1).length;
 
-      // Local unsynced check-ins for today
+      // Local check-ins for today
       final todayAttendance = await (_db.select(_db.localAttendance)
             ..where((t) =>
                 t.checkInTime.isBiggerOrEqualValue(todayStart) &
                 t.checkInTime.isSmallerOrEqualValue(todayEnd)))
           .get();
 
-      // Distinct member IDs / IDs from local today attendance
       final localTodayDistinct = <String>{};
       for (final a in todayAttendance) {
         final id = (a.memberId != null && a.memberId!.isNotEmpty)
@@ -94,12 +159,7 @@ class DashboardApiService {
             : a.id;
         localTodayDistinct.add(id);
       }
-
-      final todayCheckIns = (serverStats != null && serverStats.todayCheckInsCount > 0)
-          ? (serverStats.todayCheckInsCount > localTodayDistinct.length
-              ? serverStats.todayCheckInsCount
-              : localTodayDistinct.length)
-          : localTodayDistinct.length;
+      final todayCheckIns = localTodayDistinct.length;
 
       final currentlyInsideList = await (_db.select(_db.localAttendance)
             ..where((t) => t.checkOutTime.isNull()))
@@ -133,24 +193,14 @@ class DashboardApiService {
       );
 
       return DashboardStatsModel(
-        activeMembersCount:
-            serverStats?.activeMembersCount ?? activeCount,
-        expiredSubscriptionsCount:
-            serverStats?.expiredSubscriptionsCount ?? expiredCount,
+        activeMembersCount: activeCount,
+        expiredSubscriptionsCount: expiredCount,
         todayCheckInsCount: todayCheckIns,
-        monthlyRevenue: serverStats?.monthlyRevenue ?? monthlyRevenue,
-        currentInside: currentInside > 0
-            ? currentInside
-            : (serverStats?.currentInside ?? 0),
-        todayRevenue: serverStats?.todayRevenue ?? todayRevenue,
-        monthlyDropInRevenue:
-            serverStats?.monthlyDropInRevenue ?? monthlyDropInRevenue,
-        last7DaysAttendance: serverStats?.last7DaysAttendance,
+        monthlyRevenue: monthlyRevenue,
+        currentInside: currentInside,
+        todayRevenue: todayRevenue,
+        monthlyDropInRevenue: monthlyDropInRevenue,
       );
-    }
-
-    if (serverStats != null) {
-      return serverStats;
     }
 
     try {
