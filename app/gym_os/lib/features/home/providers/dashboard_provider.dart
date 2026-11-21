@@ -46,7 +46,14 @@ final dashboardStatsStreamProvider =
     final todayAtt = currentAttendance!.where((a) =>
         !a.checkInTime.isBefore(todayStart) &&
         !a.checkInTime.isAfter(todayEnd));
-    final todayCheckIns = todayAtt.length;
+    
+    // Deduplicate distinct member IDs (and drop-ins)
+    final distinctMemberIds = <String>{};
+    for (final a in todayAtt) {
+      final id = (a.memberId != null && a.memberId!.isNotEmpty) ? a.memberId! : a.id;
+      distinctMemberIds.add(id);
+    }
+    final todayCheckIns = distinctMemberIds.length;
 
     final insideCount =
         currentAttendance!.where((a) => a.checkOutTime == null).length;

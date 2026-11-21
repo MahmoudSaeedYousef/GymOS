@@ -190,6 +190,70 @@ void main() {
       await attendanceController.close();
       await paymentsController.close();
     });
+
+    test('aggregateWeeklyStats deduplicates multiple check-ins by the same memberId on the same day', () async {
+      final attendanceController = StreamController<List<LocalAttendanceData>>();
+      final paymentsController = StreamController<List<LocalPayment>>();
+
+      final stream = aggregateWeeklyStats(
+        attendanceStream: attendanceController.stream,
+        paymentsStream: paymentsController.stream,
+        now: fixedRefDate,
+      );
+
+      final attendanceData = [
+        // Member m1 checked in twice on Nov 20 (morning & evening)
+        LocalAttendanceData(
+          id: 'a1',
+          memberId: 'm1',
+          memberName: 'Ahmed',
+          memberPhone: null,
+          checkInTime: DateTime(2026, 11, 20, 9, 0),
+          checkOutTime: DateTime(2026, 11, 20, 11, 0),
+          isDropIn: false,
+          isDirty: false,
+        ),
+        LocalAttendanceData(
+          id: 'a2',
+          memberId: 'm1',
+          memberName: 'Ahmed',
+          memberPhone: null,
+          checkInTime: DateTime(2026, 11, 20, 18, 0),
+          checkOutTime: null,
+          isDropIn: false,
+          isDirty: false,
+        ),
+        // Member m2 checked in once on Nov 20
+        LocalAttendanceData(
+          id: 'a3',
+          memberId: 'm2',
+          memberName: 'Sara',
+          memberPhone: null,
+          checkInTime: DateTime(2026, 11, 20, 15, 0),
+          checkOutTime: null,
+          isDropIn: false,
+          isDirty: false,
+        ),
+      ];
+
+      final expectation = expectLater(
+        stream,
+        emits((List<DailyStatPoint> points) {
+          // Today's point should count 2 unique members, not 3 total check-ins
+          final todayPoint = points.last;
+          expect(todayPoint.date.day, 20);
+          expect(todayPoint.attendanceCount, 2);
+          return true;
+        }),
+      );
+
+      attendanceController.add(attendanceData);
+      paymentsController.add([]);
+
+      await expectation;
+      await attendanceController.close();
+      await paymentsController.close();
+    });
   });
 
   group('WeeklyActivityChartCard Widget Tests', () {

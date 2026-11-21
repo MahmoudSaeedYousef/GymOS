@@ -83,5 +83,33 @@ void main() {
       expect(stats.todayRevenue, 600.5);
       expect(stats.monthlyDropInRevenue, 150.25);
     });
+
+    test('parses todayAttendanceCount and last7DaysAttendance correctly', () {
+      final json = {
+        'activeMembersCount': 10,
+        'expiredSubscriptionsCount': 2,
+        'todayAttendanceCount': 5,
+        'monthlyRevenue': 1000.0,
+        'currentInside': 2,
+        'last7DaysAttendance': [
+          {'date': '2026-11-15T00:00:00.000', 'count': 4},
+          {'date': '2026-11-16T00:00:00.000', 'count': 6},
+          {'date': '2026-11-17T00:00:00.000', 'count': 5},
+          {'date': '2026-11-18T00:00:00.000', 'count': 3},
+          {'date': '2026-11-19T00:00:00.000', 'count': 7},
+          {'date': '2026-11-20T00:00:00.000', 'count': 8},
+          {'date': '2026-11-21T00:00:00.000', 'count': 5},
+        ],
+      };
+
+      final stats = DashboardStatsModel.fromJson(json);
+
+      expect(stats.todayCheckInsCount, 5);
+      expect(stats.todayAttendanceCount, 5);
+      expect(stats.last7DaysAttendance, isNotNull);
+      expect(stats.last7DaysAttendance!.length, 7);
+      expect(stats.last7DaysAttendance!.first.count, 4);
+      expect(stats.last7DaysAttendance!.last.count, 5);
+    });
   });
 }
