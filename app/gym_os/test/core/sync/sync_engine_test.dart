@@ -326,6 +326,100 @@ void main() {
       expect(metadata, isNotNull);
     });
 
+    test('syncAll ensures Push runs before Pull and unsynced local rows are preserved if Push partially fails', () async {
+      // 1. Insert an unsynced member that will fail push (500)
+      await db.into(db.localMembers).insert(
+            LocalMembersCompanion.insert(
+              id: 'mem-fail-push',
+              fullName: 'Local Unsynced Name',
+              phone: '01000000000',
+              isDirty: const Value(true),
+              updatedAt: DateTime.now(),
+            ),
+          );
+      await db.into(db.syncOutbox).insert(
+            SyncOutboxCompanion.insert(
+              operationId: 'op-fail-member',
+              entityType: 'member_create',
+              entityId: 'mem-fail-push',
+              payloadJson: jsonEncode({'fullName': 'Local Unsynced Name', 'phoneNumber': '01000000000'}),
+              createdAt: DateTime.now(),
+            ),
+          );
+
+      // 2. Also insert an unsynced attendance record that will fail push
+      await db.into(db.localAttendance).insert(
+            LocalAttendanceCompanion.insert(
+              id: 'att-fail-push',
+              memberId: const Value('mem-fail-push'),
+              memberName: 'Local Unsynced Att',
+              checkInTime: DateTime.now(),
+              isDirty: const Value(true),
+            ),
+          );
+
+      final callSequence = <String>[];
+      httpAdapter.handler = (options) {
+        if (options.method == 'POST') {
+          callSequence.add('push:${options.path}');
+          // Simulate 500 server error on Push
+          return ResponseBody.fromString('{"error": "Internal Server Error"}', 500, headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          });
+        } else if (options.method == 'GET') {
+          callSequence.add('pull:${options.path}');
+          if (options.path == '/api/gym/members') {
+            return ResponseBody.fromString(
+              jsonEncode({
+                'items': [
+                  {
+                    'id': 'mem-fail-push',
+                    'fullName': 'Server Overwrite Attempt',
+                    'phoneNumber': '01099999999',
+                    'subscriptionStatus': 'Active',
+                  }
+                ]
+              }),
+              200,
+              headers: {Headers.contentTypeHeader: [Headers.jsonContentType]},
+            );
+          } else if (options.path == '/api/attendance') {
+            return ResponseBody.fromString(
+              jsonEncode([
+                {
+                  'recordId': 'att-fail-push',
+                  'memberName': 'Server Attendance Overwrite',
+                  'checkInTime': DateTime.now().toIso8601String(),
+                }
+              ]),
+              200,
+              headers: {Headers.contentTypeHeader: [Headers.jsonContentType]},
+            );
+          }
+          return ResponseBody.fromString('{"items": []}', 200, headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          });
+        }
+        return ResponseBody.fromString('{}', 200);
+      };
+
+      // Run syncAll
+      await syncEngine.syncAll();
+
+      // Verify Push ran before Pull
+      expect(callSequence.isNotEmpty, isTrue);
+      expect(callSequence.first.startsWith('push'), isTrue);
+
+      // Verify unsynced local rows were NOT overwritten by pull
+      final member = await (db.select(db.localMembers)..where((t) => t.id.equals('mem-fail-push'))).getSingle();
+      expect(member.isDirty, isTrue);
+      expect(member.fullName, 'Local Unsynced Name');
+
+      final attendance = await (db.select(db.localAttendance)..where((t) => t.id.equals('att-fail-push'))).getSingle();
+      expect(attendance.isDirty, isTrue);
+      expect(attendance.memberName, 'Local Unsynced Att');
+    });
+
     test('syncNow skips network when offline', () async {
       connectivity.emit([ConnectivityResult.none]);
 

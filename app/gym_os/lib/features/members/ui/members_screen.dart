@@ -6,7 +6,6 @@ import 'package:gym_os/core/ui/atoms/gym_card.dart';
 import 'package:gym_os/core/utils/whatsapp_helper.dart';
 import 'package:gym_os/features/attendance/services/attendance_api_service.dart';
 import 'package:gym_os/features/attendance/ui/widgets/check_in_success_dialog.dart';
-import 'package:gym_os/features/home/providers/dashboard_provider.dart';
 import 'package:gym_os/features/payments/ui/renew_subscription_sheet.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/l10n/l10n_extension.dart';
@@ -448,7 +447,6 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
 
       if (!mounted) return;
 
-      ref.invalidate(dashboardStatsProvider);
       ref.read(membersProvider.notifier).resetFilters();
 
       await showCheckInSuccessAnimation(

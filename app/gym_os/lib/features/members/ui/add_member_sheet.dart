@@ -4,8 +4,7 @@ import 'package:gym_os/core/l10n/l10n_extension.dart';
 import 'package:gym_os/core/theme/app_theme.dart';
 import 'package:gym_os/core/ui/atoms/gym_button.dart';
 import 'package:gym_os/core/ui/atoms/gym_text_field.dart';
-import 'package:gym_os/features/home/providers/dashboard_provider.dart';
-import 'package:gym_os/features/payments/providers/payments_provider.dart';
+import 'package:gym_os/features/payments/services/payment_api_service.dart';
 import 'package:gym_os/l10n/app_localizations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../models/plan_model.dart';
@@ -96,8 +95,6 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
             method: planChosen ? _selectedPaymentMethod.value : null,
             amountPaid: amount,
           );
-      ref.invalidate(dashboardStatsProvider);
-      ref.invalidate(paymentsSummaryProvider);
       ref.read(membersProvider.notifier).resetFilters();
       if (mounted) {
         final colors = context.gymColors;

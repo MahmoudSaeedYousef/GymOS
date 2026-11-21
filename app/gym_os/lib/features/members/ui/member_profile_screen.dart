@@ -7,7 +7,6 @@ import 'package:gym_os/core/ui/atoms/gym_card.dart';
 import 'package:gym_os/core/utils/whatsapp_helper.dart';
 import 'package:intl/intl.dart';
 import 'package:gym_os/features/attendance/ui/widgets/check_in_success_dialog.dart';
-import 'package:gym_os/features/home/providers/dashboard_provider.dart';
 import 'package:gym_os/features/members/providers/members_provider.dart';
 import 'package:gym_os/features/payments/ui/renew_subscription_sheet.dart';
 import '../../../core/l10n/l10n_extension.dart';
@@ -64,8 +63,6 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
 
       if (!mounted) return;
 
-      // تحديث أرقام الداشبورد فوراً (متواجد الآن + حضور اليوم)
-      ref.invalidate(dashboardStatsProvider);
       ref.read(membersProvider.notifier).resetFilters();
 
       // تشغيل أنيميشن تسجيل الحضور
@@ -226,7 +223,6 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
               if (!context.mounted) return;
               if (result == true) {
                 ref.read(membersProvider.notifier).resetFilters();
-                ref.invalidate(dashboardStatsProvider);
                 context.pop();
               }
             },

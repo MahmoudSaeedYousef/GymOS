@@ -9,7 +9,6 @@ import 'package:gym_os/core/ui/gym_shimmer_box.dart';
 import 'package:gym_os/features/attendance/models/current_inside_member_model.dart';
 import 'package:gym_os/features/attendance/providers/attendance_provider.dart';
 import 'package:gym_os/features/attendance/services/attendance_api_service.dart';
-import 'package:gym_os/features/home/providers/dashboard_provider.dart';
 
 class CurrentInsideSheet extends ConsumerStatefulWidget {
   const CurrentInsideSheet({super.key});
@@ -29,10 +28,6 @@ class _CurrentInsideSheetState extends ConsumerState<CurrentInsideSheet> {
       final message = await ref
           .read(attendanceApiProvider)
           .checkOut(member.recordId);
-
-      // Invalidate both providers so live counter and this list update immediately
-      ref.invalidate(currentInsideProvider);
-      ref.invalidate(dashboardStatsProvider);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

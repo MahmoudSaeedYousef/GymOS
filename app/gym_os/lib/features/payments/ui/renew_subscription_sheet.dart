@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gym_os/core/ui/atoms/gym_button.dart';
 import 'package:gym_os/core/ui/atoms/gym_text_field.dart';
-import 'package:gym_os/features/home/providers/dashboard_provider.dart';
 import 'package:gym_os/features/members/providers/members_provider.dart';
 import '../../../core/l10n/l10n_extension.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -106,7 +105,6 @@ class _RenewSubscriptionSheetState
             notes: _notesController.text.trim(),
           );
 
-      ref.invalidate(dashboardStatsProvider);
       ref.read(membersProvider.notifier).resetFilters();
       if (!mounted) return;
       HapticFeedback.lightImpact();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../l10n/l10n_extension.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import 'sync_provider.dart';
@@ -13,11 +14,10 @@ class SyncStatusPill extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.gymColors;
+    final l10n = context.l10n;
     final engine = ref.watch(syncEngineProvider);
     final syncStateAsync = ref.watch(syncStateProvider);
     final state = syncStateAsync.value ?? engine.currentState;
-
-    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
 
     Widget pillContent;
     Color bgColor;
@@ -25,9 +25,7 @@ class SyncStatusPill extends ConsumerWidget {
 
     if (state.isSyncing) {
       // 1. Syncing state: Spinner + label with count
-      final label = isArabic
-          ? 'جاري المزامنة (${state.pendingCount})'
-          : 'Syncing (${state.pendingCount})';
+      final label = l10n.syncStatusSyncing(state.pendingCount);
 
       bgColor = colors.brandPrimary.withValues(alpha: 0.12);
       borderColor = colors.brandPrimary.withValues(alpha: 0.3);
@@ -57,9 +55,7 @@ class SyncStatusPill extends ConsumerWidget {
     } else if (!state.isOnline) {
       if (state.pendingCount > 0) {
         // 2. Offline with pending items: Amber badge
-        final label = isArabic
-            ? 'أوفلاين • ${state.pendingCount} بالانتظار'
-            : 'Offline • ${state.pendingCount} queued';
+        final label = l10n.syncStatusOfflineWithQueued(state.pendingCount);
 
         const amberColor = Color(0xFFF59E0B);
         bgColor = amberColor.withValues(alpha: 0.14);
@@ -82,7 +78,7 @@ class SyncStatusPill extends ConsumerWidget {
         );
       } else {
         // 3. Offline without pending items: Muted gray badge
-        final label = isArabic ? 'أوفلاين' : 'Offline';
+        final label = l10n.syncStatusOffline;
 
         bgColor = colors.surfaceLevel2;
         borderColor = colors.surfaceBorder;
@@ -105,7 +101,7 @@ class SyncStatusPill extends ConsumerWidget {
       }
     } else {
       // 4. Online and synced (pending == 0)
-      final label = isArabic ? 'متزامن' : 'Synced';
+      final label = l10n.syncStatusSynced;
 
       bgColor = colors.active.withValues(alpha: 0.12);
       borderColor = colors.active.withValues(alpha: 0.3);

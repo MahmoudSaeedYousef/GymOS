@@ -11,6 +11,7 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
     {
         var now = DateTime.UtcNow;
         var today = now.Date;
+        var tomorrow = today.AddDays(1);
         var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         // بفضل الـ Global Query Filters كل ده متفلتر بالـ TenantId أوتوماتيك!
@@ -22,8 +23,12 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
         var expiredMembers = await context.Users
             .CountAsync(u => !u.IsGuest && u.SubscriptionEndDate < now, cancellationToken);
 
-        
-        var todayCheckIns = await context.AttendanceRecords.Where(a => a.CheckInTime >= today).Select(c=>c.MemberId).Distinct().CountAsync(cancellationToken: cancellationToken);
+        // حساب حضور اليوم بالأعضاء الفريدين فقط
+        var todayCheckIns = await context.AttendanceRecords
+            .Where(a => a.CheckInTime >= today && a.CheckInTime < tomorrow)
+            .Select(c => c.MemberId)
+            .Distinct()
+            .CountAsync(cancellationToken: cancellationToken);
             
         var todayRevenue = await context.PaymentRecords
             .Where(p => p.PaymentDate >= today)
@@ -48,6 +53,29 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
             .Select(a => a.MemberId)
             .Distinct()
             .CountAsync(cancellationToken);
+
+        // 7-day daily attendance breakdown (past 7 calendar days including today)
+        var sevenDaysAgo = today.AddDays(-6);
+        var attendancePast7Days = await context.AttendanceRecords
+            .Where(a => a.CheckInTime >= sevenDaysAgo && a.CheckInTime < tomorrow)
+            .Select(a => new { a.MemberId, a.CheckInTime })
+            .ToListAsync(cancellationToken);
+
+        var last7DaysAttendance = new List<DailyAttendanceStatDto>();
+        for (var i = 0; i < 7; i++)
+        {
+            var targetDay = sevenDaysAgo.AddDays(i);
+            var nextDay = targetDay.AddDays(1);
+            var dateOnly = DateOnly.FromDateTime(targetDay);
+
+            var count = attendancePast7Days
+                .Where(a => a.CheckInTime >= targetDay && a.CheckInTime < nextDay)
+                .Select(a => a.MemberId)
+                .Distinct()
+                .Count();
+
+            last7DaysAttendance.Add(new DailyAttendanceStatDto(dateOnly, count));
+        }
         
         return new DashboardStatsDto(
             ActiveMembersCount: activeMembers,
@@ -55,8 +83,9 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
             ExpiredSubscriptionsCount: expiredMembers,
             MonthlyRevenue: monthlyRevenue,
             TodayRevenue: todayRevenue,
-            MonthlyDropInRevenue:monthlyDropInRevenue,
-            CurrentInside :currentInside
+            MonthlyDropInRevenue: monthlyDropInRevenue,
+            CurrentInside: currentInside,
+            Last7DaysAttendance: last7DaysAttendance
         );
     }
 }

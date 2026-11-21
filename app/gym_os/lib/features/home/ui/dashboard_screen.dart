@@ -19,7 +19,6 @@ import 'package:gym_os/features/home/ui/widgets/weekly_activity_chart_card.dart'
 import 'package:gym_os/features/members/models/member_model.dart';
 import 'package:gym_os/features/members/ui/add_member_sheet.dart';
 import 'package:gym_os/features/members/ui/widgets/quick_search_sheet.dart';
-import 'package:gym_os/features/payments/providers/payments_provider.dart';
 import 'package:gym_os/features/payments/ui/renew_subscription_sheet.dart';
 import '../../../../core/l10n/l10n_extension.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -108,12 +107,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             builder: (_) => RenewSubscriptionSheet(member: member),
-          ).then((result) {
-            if (result == true) {
-              ref.read(membersProvider.notifier).loadInitial();
-              ref.invalidate(dashboardStatsProvider);
-            }
-          });
+          );
         },
       ),
     );
@@ -131,10 +125,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       builder: (_) => const DropInSessionBottomSheet(),
     ).then((result) {
       if (result == true) {
-        ref.invalidate(dashboardStatsProvider);
-        ref.invalidate(currentInsideProvider);
-        ref.invalidate(paymentsSummaryProvider);
-        ref.read(membersProvider.notifier).loadInitial();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -180,7 +170,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     try {
       final message = await ref.read(attendanceApiProvider).checkIn(member.id);
       HapticFeedback.lightImpact();
-      ref.invalidate(dashboardStatsProvider);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -225,9 +214,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           child: RefreshIndicator(
             color: colors.brandPrimary,
             onRefresh: () async {
-              ref.invalidate(dashboardStatsProvider);
-              ref.read(membersProvider.notifier).loadInitial();
-              await ref.read(dashboardStatsProvider.future);
+              final isArabic =
+                  Localizations.localeOf(context).languageCode == 'ar';
+              final messenger = ScaffoldMessenger.of(context);
+              final syncEngine = ref.read(syncEngineProvider);
+              final isOnline = await syncEngine.checkReachability();
+
+              if (!isOnline) {
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isArabic
+                            ? 'أنت غير متصل بالإنترنت — يتم عرض البيانات المحفوظة'
+                            : "You're offline — showing cached data",
+                      ),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              try {
+                await syncEngine.syncAll();
+              } catch (_) {}
             },
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(
