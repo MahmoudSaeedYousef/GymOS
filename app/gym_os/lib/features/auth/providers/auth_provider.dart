@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:gym_os/core/database/app_database.dart';
+import 'package:gym_os/core/database/database_provider.dart';
 import 'package:gym_os/features/auth/services/auth_service.dart';
 
 // حالات المصادقة
@@ -15,9 +17,10 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final AuthService _authService;
+  final AppDatabase? _db;
   static const _tokenKey = 'jwt_token';
 
-  AuthNotifier(this._authService)
+  AuthNotifier(this._authService, [this._db])
     : super(AuthState(status: AuthStatus.initial)) {
     _checkAuthStatus();
   }
@@ -52,6 +55,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // تسجيل الخروج
   Future<void> logout() async {
     await _storage.delete(key: _tokenKey);
+    if (_db != null) {
+      await _db.clearAllTablesAndMetadata();
+    }
     state = AuthState(status: AuthStatus.unauthenticated);
   }
 }
@@ -59,5 +65,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
 // الـ Provider اللي هنقرأ منه في الـ UI والـ Router
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final authService = ref.watch(authServiceProvider);
-  return AuthNotifier(authService);
+  final db = ref.watch(appDatabaseProvider);
+  return AuthNotifier(authService, db);
 });

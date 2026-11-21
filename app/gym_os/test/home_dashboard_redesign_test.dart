@@ -61,7 +61,7 @@ void main() {
     return ProviderScope(
       overrides: [
         dashboardStatsProvider.overrideWith(
-          (ref) async => sampleStats,
+          (ref) => Stream.value(sampleStats),
         ),
         gymApiServiceProvider.overrideWithValue(
           _FakeGymApiService(sampleMembers),
@@ -145,7 +145,7 @@ void main() {
 
     await tester.pumpWidget(ProviderScope(
       overrides: [
-        dashboardStatsProvider.overrideWith((ref) async => statsWithDropIn),
+        dashboardStatsProvider.overrideWith((ref) => Stream.value(statsWithDropIn)),
         gymApiServiceProvider.overrideWithValue(_FakeGymApiService(sampleMembers)),
       ],
       child: MaterialApp(

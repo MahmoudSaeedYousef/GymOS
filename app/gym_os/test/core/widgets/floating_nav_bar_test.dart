@@ -264,7 +264,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            dashboardStatsProvider.overrideWith((ref) async => fakeStats),
+            dashboardStatsProvider.overrideWith((ref) => Stream.value(fakeStats)),
             gymApiServiceProvider.overrideWithValue(_FakeGymApiService()),
           ],
           child: MaterialApp(
@@ -322,7 +322,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            dashboardStatsProvider.overrideWith((ref) async => fakeStats),
+            dashboardStatsProvider.overrideWith((ref) => Stream.value(fakeStats)),
             gymApiServiceProvider.overrideWithValue(_FakeGymApiService()),
           ],
           child: MaterialApp(
@@ -385,7 +385,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            dashboardStatsProvider.overrideWith((ref) async => fakeStats),
+            dashboardStatsProvider.overrideWith((ref) => Stream.value(fakeStats)),
             gymApiServiceProvider.overrideWithValue(_FakeGymApiService()),
           ],
           child: MaterialApp(

@@ -350,11 +350,15 @@ class SyncEngine {
             break;
         }
 
+        // Extract paymentId from payload if present (e.g. dropin, member_renew, member_create)
+        final paymentId = (payload['paymentId'] ?? payload['PaymentId'])?.toString();
+
         // 2xx success: delete outbox row and clear local dirty flag
         await db.syncOutboxDao.markCompleted(
           op.id,
           entityType: op.entityType,
           entityId: op.entityId,
+          paymentId: paymentId,
         );
       } catch (e) {
         final statusCode = (e is DioException) ? e.response?.statusCode : null;
@@ -627,8 +631,15 @@ class SyncLifecycleObserver with WidgetsBindingObserver {
       _engine.syncAll();
     });
 
-    // Initial startup sync attempt
-    _engine.syncAll();
+    // Immediate non-blocking startup sync trigger (Push-then-Pull in background)
+    _connectivity.checkConnectivity().then((results) {
+      final isOnline = results.any((r) => r != ConnectivityResult.none);
+      if (isOnline) {
+        _engine.syncAll();
+      }
+    }).catchError((_) {
+      _engine.syncAll();
+    });
   }
 
   @override

@@ -1,5 +1,6 @@
 using GymOS.Application.Features.Dashboard.Queries.GetStats;
 using GymOS.Domain.Entities;
+using GymOS.Domain.Enums;
 using GymOS.Tests.Helpers;
 using Xunit;
 
@@ -121,5 +122,98 @@ public class GetDashboardStatsTests
         var dayMinus3Stat = result.Last7DaysAttendance[3];
         Assert.Equal(DateOnly.FromDateTime(today.AddDays(-3)), dayMinus3Stat.Date);
         Assert.Equal(2, dayMinus3Stat.Count); // 2 distinct members despite 3 records
+    }
+
+    [Fact]
+    public async Task Handle_IncludesDropInVisits_InTodayAndMonthlyRevenue()
+    {
+        // Arrange
+        var tenantId = Guid.NewGuid();
+        var context = TestDbContextFactory.Create(tenantId.ToString());
+
+        var tenant = new GymTenant
+        {
+            Id = tenantId,
+            Name = "Revenue Test Gym",
+            Subdomain = "revenuetest",
+            DefaultSessionDurationMinutes = 120
+        };
+        context.Tenants.Add(tenant);
+
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+        var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        // Regular subscription payment today (500)
+        var regularPaymentToday = new PaymentRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = "member_1",
+            Amount = 500m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = today.AddHours(10),
+            IsDropIn = false
+        };
+
+        // Drop-in payment today (100)
+        var dropInPaymentToday = new PaymentRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = "guest_1",
+            Amount = 100m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = today.AddHours(11),
+            IsDropIn = true
+        };
+
+        // Drop-in payment earlier this month, but before today (if today is 1st of month, place it at startOfMonth hour 1)
+        var earlierThisMonth = today > startOfMonth ? today.AddDays(-1).AddHours(12) : startOfMonth.AddMinutes(30);
+        var dropInPaymentEarlierThisMonth = new PaymentRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = "guest_2",
+            Amount = 80m,
+            Method = PaymentMethod.InstaPay,
+            PaymentDate = earlierThisMonth,
+            IsDropIn = true
+        };
+
+        // Regular payment earlier this month
+        var regularPaymentEarlierThisMonth = new PaymentRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = "member_2",
+            Amount = 400m,
+            Method = PaymentMethod.VodafoneCash,
+            PaymentDate = earlierThisMonth,
+            IsDropIn = false
+        };
+
+        context.PaymentRecords.AddRange(
+            regularPaymentToday,
+            dropInPaymentToday,
+            dropInPaymentEarlierThisMonth,
+            regularPaymentEarlierThisMonth
+        );
+        await context.SaveChangesAsync();
+
+        var handler = new GetDashboardStatsQueryHandler(context);
+
+        // Act
+        var result = await handler.Handle(new GetDashboardStatsQuery(), CancellationToken.None);
+
+        // Assert
+        // TodayRevenue = 500 (regular) + 100 (drop-in) = 600
+        Assert.Equal(600m, result.TodayRevenue);
+
+        // MonthlyRevenue = 500 + 100 + 80 + 400 = 1080
+        Assert.Equal(1080m, result.MonthlyRevenue);
+
+        // MonthlyDropInRevenue = 100 + 80 = 180
+        Assert.Equal(180m, result.MonthlyDropInRevenue);
     }
 }

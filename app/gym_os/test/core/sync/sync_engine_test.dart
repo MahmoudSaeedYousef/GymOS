@@ -560,5 +560,63 @@ void main() {
       final pending = await db.syncOutboxDao.getPendingOperations();
       expect(pending.any((o) => o.entityType == 'member_renew'), isTrue);
     });
+
+    test('pushPendingOperations clears isDirty on localPayments and localAttendance after dropin succeeds', () async {
+      connectivity.emit([ConnectivityResult.none]);
+      final service = DashboardApiService(dio, db, syncEngine);
+
+      const request = RecordDropInRequest(
+        operationId: 'op-drop-sync',
+        customAmount: 75.0,
+        method: 1,
+        guestName: 'Drop-In Customer',
+      );
+
+      final result = await service.recordDropInVisit(request);
+      expect(result.succeeded, isTrue);
+
+      // Verify locally dirty before push
+      final attendanceBefore = await (db.select(db.localAttendance)
+            ..where((t) => t.id.equals(result.attendanceId!)))
+          .getSingle();
+      expect(attendanceBefore.isDirty, isTrue);
+
+      final paymentBefore = await (db.select(db.localPayments)
+            ..where((t) => t.id.equals(result.paymentId!)))
+          .getSingle();
+      expect(paymentBefore.isDirty, isTrue);
+
+      // Setup 2xx HTTP response for drop-in push
+      httpAdapter.handler = (options) {
+        if (options.path.contains('drop-in')) {
+          return ResponseBody.fromString(
+            jsonEncode({'succeeded': true, 'message': 'Drop-in synced'}),
+            200,
+            headers: {Headers.contentTypeHeader: [Headers.jsonContentType]},
+          );
+        }
+        return ResponseBody.fromString('{"succeeded": true}', 200, headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        });
+      };
+
+      connectivity.emit([ConnectivityResult.wifi]);
+      await syncEngine.pushPendingOperations();
+
+      // Verify outbox deleted
+      final pendingAfter = await db.syncOutboxDao.getPendingOperations();
+      expect(pendingAfter.where((o) => o.operationId == 'op-drop-sync'), isEmpty);
+
+      // Verify local attendance and local payments both have isDirty == false
+      final attendanceAfter = await (db.select(db.localAttendance)
+            ..where((t) => t.id.equals(result.attendanceId!)))
+          .getSingle();
+      expect(attendanceAfter.isDirty, isFalse);
+
+      final paymentAfter = await (db.select(db.localPayments)
+            ..where((t) => t.id.equals(result.paymentId!)))
+          .getSingle();
+      expect(paymentAfter.isDirty, isFalse);
+    });
   });
 }

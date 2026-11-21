@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../app_database.dart';
@@ -65,6 +66,7 @@ class SyncOutboxDao extends DatabaseAccessor<AppDatabase>
     int id, {
     String? entityType,
     String? entityId,
+    String? paymentId,
   }) async {
     await transaction(() async {
       final outboxItem = await (select(syncOutbox)
@@ -74,22 +76,52 @@ class SyncOutboxDao extends DatabaseAccessor<AppDatabase>
       final resolvedType = entityType ?? outboxItem?.entityType;
       final resolvedId = entityId ?? outboxItem?.entityId;
 
+      String? resolvedPaymentId = paymentId;
+      if (resolvedPaymentId == null && outboxItem?.payloadJson != null) {
+        try {
+          final payload = jsonDecode(outboxItem!.payloadJson) as Map<String, dynamic>;
+          resolvedPaymentId = (payload['paymentId'] ?? payload['PaymentId'])?.toString();
+        } catch (_) {}
+      }
+
       if (resolvedType != null && resolvedId != null) {
         if (resolvedType.startsWith('member')) {
           await (update(localMembers)..where((t) => t.id.equals(resolvedId)))
               .write(
             const LocalMembersCompanion(isDirty: Value(false)),
           );
+          if (resolvedPaymentId != null && resolvedPaymentId.isNotEmpty) {
+            await (update(localPayments)..where((t) => t.id.equals(resolvedPaymentId!)))
+                .write(
+              const LocalPaymentsCompanion(isDirty: Value(false)),
+            );
+          } else {
+            await (update(localPayments)..where((t) => t.memberId.equals(resolvedId)))
+                .write(
+              const LocalPaymentsCompanion(isDirty: Value(false)),
+            );
+          }
         } else if (resolvedType == 'dropin') {
           await (update(localAttendance)..where((t) => t.id.equals(resolvedId)))
               .write(
             const LocalAttendanceCompanion(isDirty: Value(false)),
           );
-          await (update(localPayments)
-                ..where((t) => t.id.equals(resolvedId) | t.memberId.equals(resolvedId)))
-              .write(
-            const LocalPaymentsCompanion(isDirty: Value(false)),
-          );
+          if (resolvedPaymentId != null && resolvedPaymentId.isNotEmpty) {
+            await (update(localPayments)
+                  ..where((t) =>
+                      t.id.equals(resolvedPaymentId!) |
+                      t.id.equals(resolvedId) |
+                      t.memberId.equals(resolvedId)))
+                .write(
+              const LocalPaymentsCompanion(isDirty: Value(false)),
+            );
+          } else {
+            await (update(localPayments)
+                  ..where((t) => t.id.equals(resolvedId) | t.memberId.equals(resolvedId)))
+                .write(
+              const LocalPaymentsCompanion(isDirty: Value(false)),
+            );
+          }
         } else if (resolvedType == 'checkin' ||
             resolvedType == 'checkout' ||
             resolvedType.startsWith('attendance')) {
@@ -142,5 +174,12 @@ class SyncOutboxDao extends DatabaseAccessor<AppDatabase>
     await into(syncMetadata).insertOnConflictUpdate(
       SyncMetadataCompanion.insert(key: key, value: value),
     );
+  }
+
+  /// Watches a sync metadata value by key (e.g., 'cached_dashboard_stats').
+  Stream<String?> watchMetadata(String key) {
+    return (select(syncMetadata)..where((t) => t.key.equals(key)))
+        .watchSingleOrNull()
+        .map((row) => row?.value);
   }
 }
