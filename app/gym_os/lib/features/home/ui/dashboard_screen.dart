@@ -754,7 +754,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       );
     }
 
-    final latest = membersState.members.take(3).toList();
+    final latest = membersState.members.take(4).toList();
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
@@ -768,7 +768,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ),
           child: GymCard(
             elevationLevel: 1,
-            onTap: () => context.push('/members/${member.id}'),
+            onTap: () => context.pushNamed('memberProfile', extra: member),
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
               vertical: AppSpacing.sm,
