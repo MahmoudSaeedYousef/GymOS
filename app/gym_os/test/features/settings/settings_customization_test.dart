@@ -165,5 +165,27 @@ void main() {
       expect(darkAlyamama.primaryTextTheme.bodyMedium?.fontFamily, 'Alyamama');
       expect(darkAlyamama.appBarTheme.titleTextStyle?.fontFamily, 'Alyamama');
     });
+
+    testWidgets('Hidden dev seeder button is revealed after 5 taps within 2s and triggers endpoint',
+        (tester) async {
+      await tester.pumpWidget(createTestWidget(locale: const Locale('en')));
+      await tester.pumpAndSettle();
+
+      // Dev button should not be present initially
+      expect(find.text('Populate 30-Day Demo Data'), findsNothing);
+
+      // Tap Settings title 5 times
+      final titleFinder = find.text('Settings');
+      expect(titleFinder, findsOneWidget);
+
+      for (int i = 0; i < 5; i++) {
+        await tester.tap(titleFinder);
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.pumpAndSettle();
+
+      // Dev button is now visible
+      expect(find.text('Populate 30-Day Demo Data'), findsOneWidget);
+    });
   });
 }

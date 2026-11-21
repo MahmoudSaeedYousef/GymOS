@@ -243,7 +243,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get plan => 'الباقة';
 
   @override
-  String get noPlan => 'لا توجد باقة';
+  String get noPlan => 'بدون باقة';
 
   @override
   String get endDate => 'تاريخ الانتهاء';

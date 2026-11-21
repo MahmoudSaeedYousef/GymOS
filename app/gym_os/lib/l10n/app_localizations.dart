@@ -539,7 +539,7 @@ abstract class AppLocalizations {
   /// No description provided for @noPlan.
   ///
   /// In ar, this message translates to:
-  /// **'لا توجد باقة'**
+  /// **'بدون باقة'**
   String get noPlan;
 
   /// No description provided for @endDate.

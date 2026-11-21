@@ -33,4 +33,16 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   int get schemaVersion => 1;
+
+  /// Clears all local tables and sync metadata for clean synchronization.
+  Future<void> clearAllTablesAndMetadata() async {
+    await transaction(() async {
+      await delete(syncOutbox).go();
+      await delete(syncMetadata).go();
+      await delete(localAttendance).go();
+      await delete(localPayments).go();
+      await delete(localMembers).go();
+      await delete(localPlans).go();
+    });
+  }
 }

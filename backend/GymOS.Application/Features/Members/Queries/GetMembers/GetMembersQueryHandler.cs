@@ -22,12 +22,11 @@ public class GetMembersQueryHandler(IGymDbContext context)
         query = request.Filter?.ToLower() switch
         {
             "active" => query.Where(u => u.SubscriptionEndDate >= now),
-            "expired" => query.Where(u => u.SubscriptionEndDate < now),
+            "expired" => query.Where(u => u.SubscriptionEndDate < now || u.SubscriptionEndDate == null),
             "today" => query.Where(u => context.AttendanceRecords
                 .Any(a => a.MemberId == u.Id && a.CheckInTime >= today)),
             _ => query
         };
-
         // 2. البحث السريع (GIN Trigram & Phone Index)
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
@@ -176,7 +175,7 @@ public class GetMembersQueryHandler(IGymDbContext context)
                 u.PhoneNumber ?? "",
                 u.LatestSub?.PlanName,
                 u.LatestSub?.EndDate,
-                u.LatestSub?.Status ?? "None"))
+                (u.LatestSub == null || u.SubscriptionEndDate == null || u.SubscriptionEndDate < now) ? "Expired" : "Active"))
             .ToList();
 
         // بناء الـ NextCursor للصفحة الجاية

@@ -233,6 +233,7 @@ class _RenewSubscriptionSheetState
               isLoading: _isSubmitting,
               onPressed: _submit,
             ),
+            const SizedBox(height: AppSpacing.xxl),
           ],
         ),
       ),

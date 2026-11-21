@@ -69,11 +69,35 @@ void main() {
     subscriptionEndDate: DateTime.now().subtract(const Duration(days: 5)).toIso8601String(),
   );
 
+  final withoutPlanNullDateMember = MemberModel(
+    id: 'm4',
+    fullName: 'Tarek Mahmoud',
+    phoneNumber: '01234567890',
+    subscriptionStatus: 'active',
+    activePlanName: null,
+    subscriptionEndDate: null,
+  );
+
+  final withoutPlanFutureDateMember = MemberModel(
+    id: 'm5',
+    fullName: 'Youssef Nader',
+    phoneNumber: '01511223344',
+    subscriptionStatus: 'active',
+    activePlanName: null,
+    subscriptionEndDate: DateTime.now().add(const Duration(days: 20)).toIso8601String(),
+  );
+
   Widget createTestWidget({
     Locale locale = const Locale('ar'),
     List<MemberModel>? testMembers,
   }) {
-    final membersList = testMembers ?? [activeMember, expiringSoonMember, expiredMember];
+    final membersList = testMembers ?? [
+      activeMember,
+      expiringSoonMember,
+      expiredMember,
+      withoutPlanNullDateMember,
+      withoutPlanFutureDateMember,
+    ];
 
     return ProviderScope(
       overrides: [
@@ -155,12 +179,13 @@ void main() {
       expect(find.text('نشط'), findsOneWidget);
       expect(find.text('ينتهي قريباً'), findsOneWidget);
       expect(find.text('منتهي'), findsOneWidget);
+      expect(find.text('لا توجد باقة'), findsNWidgets(2));
 
       // Quick action check-in fingerprint button on active member
       expect(find.byIcon(Icons.fingerprint_rounded), findsOneWidget);
 
-      // Quick action renew button on expiringSoon and expired members
-      expect(find.byIcon(Icons.autorenew_rounded), findsNWidgets(2));
+      // Quick action renew button on expiringSoon, expired, and withoutPlan members
+      expect(find.byIcon(Icons.autorenew_rounded), findsNWidgets(4));
     });
 
     testWidgets('works in English LTR without overflow and with correct labels', (tester) async {
