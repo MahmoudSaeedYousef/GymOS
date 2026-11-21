@@ -201,6 +201,8 @@ class SyncEngine {
         payload = {};
       }
 
+      String? reconciledPaymentId;
+
       final options = Options(
         headers: {'X-Idempotency-Key': op.operationId},
         sendTimeout: const Duration(seconds: 3),
@@ -317,7 +319,7 @@ class SyncEngine {
 
           case 'dropin':
             try {
-              await dio.post(
+              final res = await dio.post(
                 '/api/visits/drop-in',
                 data: {
                   'clientId': op.entityId,
@@ -327,9 +329,27 @@ class SyncEngine {
                 },
                 options: options,
               );
+              Map<String, dynamic>? resMap;
+              if (res.data is Map<String, dynamic>) {
+                resMap = res.data as Map<String, dynamic>;
+              } else if (res.data is String) {
+                try {
+                  final decoded = jsonDecode(res.data as String);
+                  if (decoded is Map<String, dynamic>) resMap = decoded;
+                } catch (_) {}
+              }
+              final serverPayId = (resMap?['paymentId'] ?? resMap?['PaymentId'])?.toString();
+              final localPayId =
+                  (payload['paymentId'] ?? payload['PaymentId'])?.toString();
+              if (serverPayId != null &&
+                  localPayId != null &&
+                  serverPayId != localPayId) {
+                await db.paymentsDao.reconcilePaymentId(localPayId, serverPayId);
+                reconciledPaymentId = serverPayId;
+              }
             } on DioException catch (e) {
               if (e.response?.statusCode == 404) {
-                await dio.post(
+                final res = await dio.post(
                   '/api/gym/attendance/drop-in',
                   data: {
                     'clientId': op.entityId,
@@ -339,6 +359,24 @@ class SyncEngine {
                   },
                   options: options,
                 );
+                Map<String, dynamic>? resMap;
+                if (res.data is Map<String, dynamic>) {
+                  resMap = res.data as Map<String, dynamic>;
+                } else if (res.data is String) {
+                  try {
+                    final decoded = jsonDecode(res.data as String);
+                    if (decoded is Map<String, dynamic>) resMap = decoded;
+                  } catch (_) {}
+                }
+                final serverPayId = (resMap?['paymentId'] ?? resMap?['PaymentId'])?.toString();
+                final localPayId =
+                    (payload['paymentId'] ?? payload['PaymentId'])?.toString();
+                if (serverPayId != null &&
+                    localPayId != null &&
+                    serverPayId != localPayId) {
+                  await db.paymentsDao.reconcilePaymentId(localPayId, serverPayId);
+                  reconciledPaymentId = serverPayId;
+                }
               } else {
                 rethrow;
               }
@@ -350,11 +388,16 @@ class SyncEngine {
             break;
         }
 
+        // Extract paymentId from payload if present (e.g. dropin, member_renew, member_create)
+        final paymentId = reconciledPaymentId ??
+            (payload['paymentId'] ?? payload['PaymentId'])?.toString();
+
         // 2xx success: delete outbox row and clear local dirty flag
         await db.syncOutboxDao.markCompleted(
           op.id,
           entityType: op.entityType,
           entityId: op.entityId,
+          paymentId: paymentId,
         );
       } catch (e) {
         final statusCode = (e is DioException) ? e.response?.statusCode : null;
@@ -627,8 +670,15 @@ class SyncLifecycleObserver with WidgetsBindingObserver {
       _engine.syncAll();
     });
 
-    // Initial startup sync attempt
-    _engine.syncAll();
+    // Immediate non-blocking startup sync trigger (Push-then-Pull in background)
+    _connectivity.checkConnectivity().then((results) {
+      final isOnline = results.any((r) => r != ConnectivityResult.none);
+      if (isOnline) {
+        _engine.syncAll();
+      }
+    }).catchError((_) {
+      _engine.syncAll();
+    });
   }
 
   @override

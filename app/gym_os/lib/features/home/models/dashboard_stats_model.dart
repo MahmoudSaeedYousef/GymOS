@@ -10,7 +10,7 @@ class DailyAttendanceStat {
     final rawDate = json['date'] ?? json['Date'];
     if (rawDate != null) {
       final parsed = DateTime.tryParse(rawDate.toString());
-      if (parsed != null) parsedDate = parsed;
+      if (parsed != null) parsedDate = parsed.toLocal();
     }
 
     int parsedCount = 0;

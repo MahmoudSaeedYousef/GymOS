@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import 'dashboard_provider.dart';
 
 /// Strongly typed model representing aggregated activity for a single calendar day.
 class DailyStatPoint {
@@ -167,12 +168,14 @@ Stream<List<DailyStatPoint>> aggregateWeeklyStats({
 }
 
 /// Offline-first reactive StreamProvider that computes the last 7 calendar days
-/// directly from [LocalAttendance] and [LocalPayments] in Drift SQLite with 0ms latency.
+/// directly from unified dashboard stats when available (matching getStats()),
+/// with fallback to local Drift SQLite tables.
 final weeklyStatsProvider =
     StreamProvider.autoDispose<List<DailyStatPoint>>((ref) {
   final now = ref.watch(weeklyStatsReferenceDateProvider);
   final attendanceDao = ref.watch(attendanceDaoProvider);
   final paymentsDao = ref.watch(paymentsDaoProvider);
+  final dashboardStatsAsync = ref.watch(dashboardStatsProvider);
 
   final today = DateTime(now.year, now.month, now.day);
   final rangeStart = DateTime(today.year, today.month, today.day - 6, 0, 0, 0, 0);
@@ -183,9 +186,35 @@ final weeklyStatsProvider =
   final paymentsStream =
       paymentsDao.watchPaymentsInRange(rangeStart, rangeEnd);
 
-  return aggregateWeeklyStats(
+  final localWeeklyStream = aggregateWeeklyStats(
     attendanceStream: attendanceStream,
     paymentsStream: paymentsStream,
     now: now,
   );
+
+  return localWeeklyStream.map((localPoints) {
+    final serverStats = dashboardStatsAsync.value;
+    final server7Days = serverStats?.last7DaysAttendance;
+
+    if (server7Days == null || server7Days.isEmpty) {
+      return localPoints;
+    }
+
+    // Merge server last 7 days breakdown with local points (keeping payments/revenue from local)
+    return localPoints.map((lp) {
+      final matchingServerStat = server7Days.cast<DailyAttendanceStat?>().firstWhere(
+            (s) =>
+                s != null &&
+                s.date.year == lp.date.year &&
+                s.date.month == lp.date.month &&
+                s.date.day == lp.date.day,
+            orElse: () => null,
+          );
+
+      if (matchingServerStat != null) {
+        return lp.copyWith(attendanceCount: matchingServerStat.count);
+      }
+      return lp;
+    }).toList();
+  });
 });
