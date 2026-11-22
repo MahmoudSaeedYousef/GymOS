@@ -106,6 +106,7 @@ class _RenewSubscriptionSheetState
           );
 
       ref.read(membersProvider.notifier).resetFilters();
+      ref.invalidate(membersSummaryProvider);
       if (!mounted) return;
       HapticFeedback.lightImpact();
       Navigator.pop(context, true); // نقفل الشيت ونبعت true عشان نحدث الشاشة

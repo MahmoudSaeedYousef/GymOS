@@ -12,7 +12,7 @@ enum MemberFilter {
       case MemberFilter.active:
         return 'active';
       case MemberFilter.expiringSoon:
-        return 'active'; // Query active members from backend; filter expiring-soon locally
+        return 'expiring_soon';
       case MemberFilter.expired:
         return 'expired';
       case MemberFilter.today:
