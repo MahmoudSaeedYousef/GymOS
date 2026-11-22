@@ -125,6 +125,17 @@ class $LocalMembersTable extends LocalMembers
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _photoUrlMeta = const VerificationMeta(
+    'photoUrl',
+  );
+  @override
+  late final GeneratedColumn<String> photoUrl = GeneratedColumn<String>(
+    'photo_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isDirtyMeta = const VerificationMeta(
     'isDirty',
   );
@@ -153,6 +164,7 @@ class $LocalMembersTable extends LocalMembers
     isGuest,
     status,
     updatedAt,
+    photoUrl,
     isDirty,
   ];
   @override
@@ -244,6 +256,12 @@ class $LocalMembersTable extends LocalMembers
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('photo_url')) {
+      context.handle(
+        _photoUrlMeta,
+        photoUrl.isAcceptableOrUnknown(data['photo_url']!, _photoUrlMeta),
+      );
+    }
     if (data.containsKey('is_dirty')) {
       context.handle(
         _isDirtyMeta,
@@ -303,6 +321,10 @@ class $LocalMembersTable extends LocalMembers
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      photoUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_url'],
+      ),
       isDirty: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_dirty'],
@@ -350,6 +372,9 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
   /// Last updated timestamp.
   final DateTime updatedAt;
 
+  /// Relative or full URL to member's photo.
+  final String? photoUrl;
+
   /// Local dirty flag: true when modified locally and awaiting sync.
   final bool isDirty;
   const LocalMember({
@@ -364,6 +389,7 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
     required this.isGuest,
     required this.status,
     required this.updatedAt,
+    this.photoUrl,
     required this.isDirty,
   });
   @override
@@ -392,6 +418,9 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
     map['is_guest'] = Variable<bool>(isGuest);
     map['status'] = Variable<int>(status);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || photoUrl != null) {
+      map['photo_url'] = Variable<String>(photoUrl);
+    }
     map['is_dirty'] = Variable<bool>(isDirty);
     return map;
   }
@@ -419,6 +448,9 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
       isGuest: Value(isGuest),
       status: Value(status),
       updatedAt: Value(updatedAt),
+      photoUrl: photoUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoUrl),
       isDirty: Value(isDirty),
     );
   }
@@ -444,6 +476,7 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
       isGuest: serializer.fromJson<bool>(json['isGuest']),
       status: serializer.fromJson<int>(json['status']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      photoUrl: serializer.fromJson<String?>(json['photoUrl']),
       isDirty: serializer.fromJson<bool>(json['isDirty']),
     );
   }
@@ -464,6 +497,7 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
       'isGuest': serializer.toJson<bool>(isGuest),
       'status': serializer.toJson<int>(status),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'photoUrl': serializer.toJson<String?>(photoUrl),
       'isDirty': serializer.toJson<bool>(isDirty),
     };
   }
@@ -480,6 +514,7 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
     bool? isGuest,
     int? status,
     DateTime? updatedAt,
+    Value<String?> photoUrl = const Value.absent(),
     bool? isDirty,
   }) => LocalMember(
     id: id ?? this.id,
@@ -497,6 +532,7 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
     isGuest: isGuest ?? this.isGuest,
     status: status ?? this.status,
     updatedAt: updatedAt ?? this.updatedAt,
+    photoUrl: photoUrl.present ? photoUrl.value : this.photoUrl,
     isDirty: isDirty ?? this.isDirty,
   );
   LocalMember copyWithCompanion(LocalMembersCompanion data) {
@@ -516,6 +552,7 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
       isGuest: data.isGuest.present ? data.isGuest.value : this.isGuest,
       status: data.status.present ? data.status.value : this.status,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      photoUrl: data.photoUrl.present ? data.photoUrl.value : this.photoUrl,
       isDirty: data.isDirty.present ? data.isDirty.value : this.isDirty,
     );
   }
@@ -534,6 +571,7 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
           ..write('isGuest: $isGuest, ')
           ..write('status: $status, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('photoUrl: $photoUrl, ')
           ..write('isDirty: $isDirty')
           ..write(')'))
         .toString();
@@ -552,6 +590,7 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
     isGuest,
     status,
     updatedAt,
+    photoUrl,
     isDirty,
   );
   @override
@@ -569,6 +608,7 @@ class LocalMember extends DataClass implements Insertable<LocalMember> {
           other.isGuest == this.isGuest &&
           other.status == this.status &&
           other.updatedAt == this.updatedAt &&
+          other.photoUrl == this.photoUrl &&
           other.isDirty == this.isDirty);
 }
 
@@ -584,6 +624,7 @@ class LocalMembersCompanion extends UpdateCompanion<LocalMember> {
   final Value<bool> isGuest;
   final Value<int> status;
   final Value<DateTime> updatedAt;
+  final Value<String?> photoUrl;
   final Value<bool> isDirty;
   final Value<int> rowid;
   const LocalMembersCompanion({
@@ -598,6 +639,7 @@ class LocalMembersCompanion extends UpdateCompanion<LocalMember> {
     this.isGuest = const Value.absent(),
     this.status = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.photoUrl = const Value.absent(),
     this.isDirty = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -613,6 +655,7 @@ class LocalMembersCompanion extends UpdateCompanion<LocalMember> {
     this.isGuest = const Value.absent(),
     this.status = const Value.absent(),
     required DateTime updatedAt,
+    this.photoUrl = const Value.absent(),
     this.isDirty = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -631,6 +674,7 @@ class LocalMembersCompanion extends UpdateCompanion<LocalMember> {
     Expression<bool>? isGuest,
     Expression<int>? status,
     Expression<DateTime>? updatedAt,
+    Expression<String>? photoUrl,
     Expression<bool>? isDirty,
     Expression<int>? rowid,
   }) {
@@ -648,6 +692,7 @@ class LocalMembersCompanion extends UpdateCompanion<LocalMember> {
       if (isGuest != null) 'is_guest': isGuest,
       if (status != null) 'status': status,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (photoUrl != null) 'photo_url': photoUrl,
       if (isDirty != null) 'is_dirty': isDirty,
       if (rowid != null) 'rowid': rowid,
     });
@@ -665,6 +710,7 @@ class LocalMembersCompanion extends UpdateCompanion<LocalMember> {
     Value<bool>? isGuest,
     Value<int>? status,
     Value<DateTime>? updatedAt,
+    Value<String?>? photoUrl,
     Value<bool>? isDirty,
     Value<int>? rowid,
   }) {
@@ -681,6 +727,7 @@ class LocalMembersCompanion extends UpdateCompanion<LocalMember> {
       isGuest: isGuest ?? this.isGuest,
       status: status ?? this.status,
       updatedAt: updatedAt ?? this.updatedAt,
+      photoUrl: photoUrl ?? this.photoUrl,
       isDirty: isDirty ?? this.isDirty,
       rowid: rowid ?? this.rowid,
     );
@@ -726,6 +773,9 @@ class LocalMembersCompanion extends UpdateCompanion<LocalMember> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (photoUrl.present) {
+      map['photo_url'] = Variable<String>(photoUrl.value);
+    }
     if (isDirty.present) {
       map['is_dirty'] = Variable<bool>(isDirty.value);
     }
@@ -749,6 +799,7 @@ class LocalMembersCompanion extends UpdateCompanion<LocalMember> {
           ..write('isGuest: $isGuest, ')
           ..write('status: $status, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('photoUrl: $photoUrl, ')
           ..write('isDirty: $isDirty, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3140,6 +3191,7 @@ typedef $$LocalMembersTableCreateCompanionBuilder =
       Value<bool> isGuest,
       Value<int> status,
       required DateTime updatedAt,
+      Value<String?> photoUrl,
       Value<bool> isDirty,
       Value<int> rowid,
     });
@@ -3156,6 +3208,7 @@ typedef $$LocalMembersTableUpdateCompanionBuilder =
       Value<bool> isGuest,
       Value<int> status,
       Value<DateTime> updatedAt,
+      Value<String?> photoUrl,
       Value<bool> isDirty,
       Value<int> rowid,
     });
@@ -3221,6 +3274,11 @@ class $$LocalMembersTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoUrl => $composableBuilder(
+    column: $table.photoUrl,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3294,6 +3352,11 @@ class $$LocalMembersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get photoUrl => $composableBuilder(
+    column: $table.photoUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isDirty => $composableBuilder(
     column: $table.isDirty,
     builder: (column) => ColumnOrderings(column),
@@ -3346,6 +3409,9 @@ class $$LocalMembersTableAnnotationComposer
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
+  GeneratedColumn<String> get photoUrl =>
+      $composableBuilder(column: $table.photoUrl, builder: (column) => column);
+
   GeneratedColumn<bool> get isDirty =>
       $composableBuilder(column: $table.isDirty, builder: (column) => column);
 }
@@ -3392,6 +3458,7 @@ class $$LocalMembersTableTableManager
                 Value<bool> isGuest = const Value.absent(),
                 Value<int> status = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> photoUrl = const Value.absent(),
                 Value<bool> isDirty = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalMembersCompanion(
@@ -3406,6 +3473,7 @@ class $$LocalMembersTableTableManager
                 isGuest: isGuest,
                 status: status,
                 updatedAt: updatedAt,
+                photoUrl: photoUrl,
                 isDirty: isDirty,
                 rowid: rowid,
               ),
@@ -3422,6 +3490,7 @@ class $$LocalMembersTableTableManager
                 Value<bool> isGuest = const Value.absent(),
                 Value<int> status = const Value.absent(),
                 required DateTime updatedAt,
+                Value<String?> photoUrl = const Value.absent(),
                 Value<bool> isDirty = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalMembersCompanion.insert(
@@ -3436,6 +3505,7 @@ class $$LocalMembersTableTableManager
                 isGuest: isGuest,
                 status: status,
                 updatedAt: updatedAt,
+                photoUrl: photoUrl,
                 isDirty: isDirty,
                 rowid: rowid,
               ),

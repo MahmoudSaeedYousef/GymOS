@@ -32,7 +32,16 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'gym_os_local'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(localMembers, localMembers.photoUrl);
+          }
+        },
+      );
 
   /// Clears all local tables and sync metadata for clean synchronization.
   Future<void> clearAllTablesAndMetadata() async {

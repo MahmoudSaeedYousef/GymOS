@@ -471,6 +471,7 @@ class SyncEngine {
           subscriptionEndDate: Value(
             endDateStr != null ? DateTime.tryParse(endDateStr) : null,
           ),
+          photoUrl: Value(map['photoUrl']?.toString() ?? map['photo_url']?.toString()),
           status: Value(isActive ? 1 : 0),
           updatedAt: DateTime.now(),
           isDirty: const Value(false),

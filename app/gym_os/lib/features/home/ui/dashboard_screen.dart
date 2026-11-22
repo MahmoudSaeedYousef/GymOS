@@ -261,10 +261,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(
+                      AppSpacing.md,
+                      AppSpacing.lg,
+                      AppSpacing.md,
                       AppSpacing.xl,
-                      AppSpacing.md,
-                      AppSpacing.md,
-                      AppSpacing.xs,
                     ),
                     child: _DashboardHeader(
                       mode: _viewMode,
@@ -879,27 +879,41 @@ class _DashboardHeader extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Transform.flip(
-              flipX: isRtl,
-              child: Image.asset(
-                'assets/icons/app_icon.png',
-                width: 75,
-                height: 75,
-                fit: BoxFit.contain,
-                color: !isLight ? colors.brandPrimary : null,
-                colorBlendMode: !isLight ? BlendMode.srcIn : null,
-                semanticLabel: context.l10n.appLogoSemanticLabel,
+            Container(
+              width: 65,
+              height: 65,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: colors.brandPrimary.withValues(alpha: 0.45),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    // color: colors.brandPrimary.withValues(alpha: 0.0722),
+                    color: colors.brandPrimary.withValues(alpha: 0.0722),
+                    blurRadius: isLight ? 12 : 4,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(13),
+                child: Transform.flip(
+                  flipX: isRtl,
+                  child: Image.asset(
+                    'assets/icons/app_icon.png',
+                    fit: BoxFit.cover,
+                    color: !isLight
+                        ? Color.lerp(Colors.white, colors.brandPrimary, 0.25)!
+                        : null,
+                    colorBlendMode: !isLight ? BlendMode.dstATop : null,
+                    semanticLabel: context.l10n.appLogoSemanticLabel,
+                  ),
+                ),
               ),
             ),
-            // Image.asset(
-            //   'assets/icons/app_icon.png',
-            //   width: 65,
-            //   height: 65,
-            //   fit: BoxFit.contain,
-            //   color: !isLight ? colors.brandPrimary : null,
-            //   colorBlendMode: !isLight ? BlendMode.srcIn : null,
-            //   semanticLabel: context.l10n.appLogoSemanticLabel,
-            // ),
             const SizedBox(width: AppSpacing.sm),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -931,31 +945,7 @@ class _DashboardHeader extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SyncStatusPill(),
-            // const SizedBox(width: AppSpacing.sm),
-            // Material(
-            //   color: Colors.transparent,
-            //   child: InkWell(
-            //     onTap: onNotificationTap,
-            //     borderRadius: BorderRadius.circular(24),
-            //     child: Container(
-            //       width: 44,
-            //       height: 44,
-            //       decoration: BoxDecoration(
-            //         color: colors.surfaceLevel2,
-            //         shape: BoxShape.circle,
-            //         border: Border.all(color: colors.surfaceBorder),
-            //       ),
-            //       child: Icon(
-            //         Icons.notifications_none_rounded,
-            //         color: colors.textPrimary,
-            //         size: 20,
-            //       ),
-            //     ),
-            //   ),
-            // ),
-          ],
+          children: [const SyncStatusPill()],
         ),
       ],
     );

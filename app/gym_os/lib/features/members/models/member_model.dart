@@ -13,6 +13,7 @@ class MemberModel {
   final String? subscriptionEndDate;
   final String subscriptionStatus;
   final bool isGuest;
+  final String? photoUrl;
 
   MemberModel({
     required this.id,
@@ -22,6 +23,7 @@ class MemberModel {
     this.subscriptionEndDate,
     required this.subscriptionStatus,
     this.isGuest = false,
+    this.photoUrl,
   });
 
   MemberSubscriptionStatus get status {
@@ -82,7 +84,31 @@ class MemberModel {
     subscriptionEndDate: json['subscriptionEndDate'],
     subscriptionStatus: json['subscriptionStatus'],
     isGuest: json['isGuest'] as bool? ?? json['is_guest'] as bool? ?? false,
+    photoUrl: json['photoUrl'] as String? ?? json['photo_url'] as String?,
   );
+
+  MemberModel copyWith({
+    String? id,
+    String? fullName,
+    String? phoneNumber,
+    String? activePlanName,
+    String? subscriptionEndDate,
+    String? subscriptionStatus,
+    bool? isGuest,
+    String? photoUrl,
+    bool clearPhotoUrl = false,
+  }) {
+    return MemberModel(
+      id: id ?? this.id,
+      fullName: fullName ?? this.fullName,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      activePlanName: activePlanName ?? this.activePlanName,
+      subscriptionEndDate: subscriptionEndDate ?? this.subscriptionEndDate,
+      subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
+      isGuest: isGuest ?? this.isGuest,
+      photoUrl: clearPhotoUrl ? null : (photoUrl ?? this.photoUrl),
+    );
+  }
 }
 
 class PagedMembersResponse {

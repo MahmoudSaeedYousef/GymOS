@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -113,6 +114,7 @@ class GymApiService {
             activePlanName: m.planName,
             subscriptionEndDate: m.subscriptionEndDate?.toIso8601String(),
             subscriptionStatus: m.status == 1 ? 'active' : 'expired',
+            photoUrl: m.photoUrl,
           );
         }).toList();
 
@@ -277,5 +279,65 @@ class GymApiService {
         'amountPaid': ?amountPaid,
       },
     );
+  }
+
+  /// Updates member's name and phone number (Admin/Manager).
+  Future<MemberModel> updateMember(
+    String id, {
+    required String fullName,
+    required String phoneNumber,
+  }) async {
+    final res = await _dio.put(
+      '/api/members/$id',
+      data: {
+        'fullName': fullName,
+        'phoneNumber': phoneNumber,
+      },
+    );
+
+    final updated = MemberModel.fromJson(res.data as Map<String, dynamic>);
+
+    if (_db != null) {
+      await (_db.update(_db.localMembers)..where((t) => t.id.equals(id))).write(
+        LocalMembersCompanion(
+          fullName: Value(fullName),
+          phone: Value(phoneNumber),
+          photoUrl: Value(updated.photoUrl),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+
+    return updated;
+  }
+
+  /// Uploads a member's photo avatar using multipart/form-data.
+  Future<String> uploadMemberPhoto(String id, File file) async {
+    final fileName = file.path.split(Platform.pathSeparator).last;
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        file.path,
+        filename: fileName,
+      ),
+    });
+
+    final res = await _dio.post(
+      '/api/members/$id/photo',
+      data: formData,
+    );
+
+    final data = res.data as Map<String, dynamic>;
+    final photoUrl = data['photoUrl'] as String? ?? data['photo_url'] as String? ?? '';
+
+    if (_db != null && photoUrl.isNotEmpty) {
+      await (_db.update(_db.localMembers)..where((t) => t.id.equals(id))).write(
+        LocalMembersCompanion(
+          photoUrl: Value(photoUrl),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+
+    return photoUrl;
   }
 }

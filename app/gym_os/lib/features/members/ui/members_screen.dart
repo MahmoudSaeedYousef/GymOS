@@ -15,6 +15,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../models/member_model.dart';
 import '../providers/members_provider.dart';
 import 'add_member_sheet.dart';
+import 'widgets/member_avatar.dart';
 import 'widgets/member_sort_sheet.dart';
 
 class MembersScreen extends ConsumerStatefulWidget {
@@ -500,10 +501,6 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
         break;
     }
 
-    final initialLetter = widget.member.fullName.trim().isNotEmpty
-        ? widget.member.fullName.trim()[0].toUpperCase()
-        : '?';
-
     return GymCard(
       onTap: () {
         context.pushNamed('memberProfile', extra: widget.member);
@@ -511,24 +508,12 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 1. Leading Avatar: 44dp squircle badge
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Center(
-              child: Text(
-                initialLetter,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: colorScheme.primary,
-                ),
-              ),
-            ),
+          // 1. Leading Avatar: 44dp circular network/fallback badge
+          MemberAvatar(
+            photoUrl: widget.member.photoUrl,
+            fullName: widget.member.fullName,
+            radius: 22,
+            fontSize: 18,
           ),
           const SizedBox(width: AppSpacing.md),
 
