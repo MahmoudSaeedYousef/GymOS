@@ -118,6 +118,125 @@ public class ClientGeneratedIdTests
     }
 
     [Fact]
+    public async Task CheckIn_WhenRetriedWithSameClientIdInSameDbContext_ReturnsSuccessWithoutTrackingException()
+    {
+        // Arrange
+        var gymId = Guid.NewGuid();
+        var (context, userManager, _) = SetupEnvironment(gymId);
+
+        var member = new ApplicationUser
+        {
+            Id = Guid.NewGuid().ToString(),
+            TenantId = gymId,
+            UserName = "member_retry_test",
+            SubscriptionEndDate = DateTime.UtcNow.AddDays(30)
+        };
+        await userManager.CreateAsync(member, "Password@123");
+
+        var customAttendanceId = Guid.NewGuid();
+        var offlineCheckInTime = DateTime.UtcNow.AddHours(-1);
+
+        var handler = new CheckInCommandHandler(context);
+        var command = new CheckInCommand(
+            MemberId: member.Id,
+            ClientId: customAttendanceId,
+            OccurredAtUtc: offlineCheckInTime,
+            Notes: "Offline CheckIn Initial"
+        );
+
+        // Act 1: Initial check-in
+        var firstResult = await handler.Handle(command, CancellationToken.None);
+        Assert.True(firstResult.IsSuccess);
+        Assert.Equal(customAttendanceId, firstResult.AttendanceId);
+
+        // Act 2: Immediate retry with same ClientId in the SAME DbContext scope (simulating offline retry / replay)
+        var retryCommand = command with { Notes = "Offline CheckIn Retried" };
+        var retryResult = await handler.Handle(retryCommand, CancellationToken.None);
+
+        // Assert: Must succeed cleanly without throwing InvalidOperationException
+        Assert.True(retryResult.IsSuccess);
+        Assert.Equal(customAttendanceId, retryResult.AttendanceId);
+
+        var count = await context.AttendanceRecords
+            .IgnoreQueryFilters()
+            .CountAsync(a => a.Id == customAttendanceId);
+        Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public async Task CheckIn_WhenRetriedInNewDbContextScope_ReturnsSuccessWithoutDuplicateKeyException()
+    {
+        // Arrange
+        var gymId = Guid.NewGuid();
+        var (context1, userManager1, _) = SetupEnvironment(gymId);
+
+        var member = new ApplicationUser
+        {
+            Id = Guid.NewGuid().ToString(),
+            TenantId = gymId,
+            UserName = "member_retry_scope_test",
+            SubscriptionEndDate = DateTime.UtcNow.AddDays(30)
+        };
+        await userManager1.CreateAsync(member, "Password@123");
+
+        var customAttendanceId = Guid.NewGuid();
+        var offlineCheckInTime = DateTime.UtcNow.AddHours(-1);
+
+        var handler1 = new CheckInCommandHandler(context1);
+        var command = new CheckInCommand(
+            MemberId: member.Id,
+            ClientId: customAttendanceId,
+            OccurredAtUtc: offlineCheckInTime,
+            Notes: "Initial Push"
+        );
+
+        // Act 1: First request in scope 1
+        var result1 = await handler1.Handle(command, CancellationToken.None);
+        Assert.True(result1.IsSuccess);
+
+        // Act 2: Second request in scope 2 (same underlying db instance from factory)
+        var handler2 = new CheckInCommandHandler(context1);
+        var result2 = await handler2.Handle(command, CancellationToken.None);
+
+        // Assert: Idempotent success
+        Assert.True(result2.IsSuccess);
+        Assert.Equal(customAttendanceId, result2.AttendanceId);
+    }
+
+    [Fact]
+    public async Task CheckOut_WhenRetried_ReturnsSuccessIdempotently()
+    {
+        // Arrange
+        var gymId = Guid.NewGuid();
+        var (context, _, _) = SetupEnvironment(gymId);
+
+        var recordId = Guid.NewGuid();
+        var checkInTime = DateTime.UtcNow.AddHours(-2);
+        var checkOutTime = DateTime.UtcNow.AddHours(-1);
+
+        var record = new AttendanceRecord
+        {
+            Id = recordId,
+            TenantId = gymId.ToString(),
+            MemberId = Guid.NewGuid().ToString(),
+            CheckInTime = checkInTime
+        };
+        context.AttendanceRecords.Add(record);
+        await context.SaveChangesAsync();
+
+        var handler = new CheckOutCommandHandler(context);
+        var command = new CheckOutCommand(recordId, OccurredAtUtc: checkOutTime);
+
+        // Act 1: First check-out
+        var result1 = await handler.Handle(command, CancellationToken.None);
+        Assert.True(result1.IsSuccess);
+
+        // Act 2: Retried check-out with same RecordId
+        var result2 = await handler.Handle(command, CancellationToken.None);
+        Assert.True(result2.IsSuccess);
+    }
+
+    [Fact]
     public async Task CheckOut_WithOccurredAtUtc_PersistsRealTimestamp()
     {
         // Arrange

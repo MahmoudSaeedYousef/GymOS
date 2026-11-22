@@ -38,6 +38,8 @@ class _WeeklyActivityChartCardState
       elevationLevel: 1,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: statsAsync.when(
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
         data: (points) => _buildCardContent(points, colors, locale),
         loading: () => _buildLoadingSkeleton(colors, locale),
         error: (_, _) => _buildEmptyOrFallback(colors, locale),

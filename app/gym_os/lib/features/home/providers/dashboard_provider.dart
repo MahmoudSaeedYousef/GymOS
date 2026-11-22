@@ -276,6 +276,8 @@ final dashboardStatsProvider =
     StreamProvider.autoDispose<DashboardStatsModel>((ref) {
   final stream = ref.watch(dashboardStatsStreamProvider);
   return stream.when(
+    skipLoadingOnReload: true,
+    skipLoadingOnRefresh: true,
     data: (data) => Stream.value(data),
     error: (err, stack) => Stream.error(err, stack),
     loading: () => const Stream.empty(),

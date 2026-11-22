@@ -339,6 +339,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
         // 4. Slim Currently in Gym Strip
         statsAsync.when(
+          skipLoadingOnReload: true,
+          skipLoadingOnRefresh: true,
           data: (stats) => SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -421,6 +423,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return [
       // 1. Slim Presence Strip
       statsAsync.when(
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
         data: (stats) => SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -451,6 +455,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
       // 2. Revenue Card (Monthly Revenue)
       statsAsync.when(
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
         data: (stats) => SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -490,6 +496,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
       // 3. Compact KPI Stat Cards Grid (reduced to ~half height)
       statsAsync.when(
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
         data: (stats) => SliverPadding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
