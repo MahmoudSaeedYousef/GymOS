@@ -29,7 +29,12 @@ import '../../members/providers/members_provider.dart';
 enum DashboardViewMode { operations, overview }
 
 class DashboardScreen extends ConsumerStatefulWidget {
-  const DashboardScreen({super.key});
+  final DashboardViewMode initialMode;
+
+  const DashboardScreen({
+    super.key,
+    this.initialMode = DashboardViewMode.operations,
+  });
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
@@ -37,9 +42,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with AutomaticKeepAliveClientMixin {
-  // Mode defaults to Operations. (Role auto-detection is blocked because
-  // role is not exposed by existing authProvider).
-  DashboardViewMode _viewMode = DashboardViewMode.operations;
+  late DashboardViewMode _viewMode;
 
   // Search controller for inline member search & check-in
   final TextEditingController _searchController = TextEditingController();
@@ -51,6 +54,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   @override
   void initState() {
     super.initState();
+    _viewMode = widget.initialMode;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(syncLifecycleObserverProvider);
       ref.read(membersProvider.notifier).resetFilters();
@@ -61,6 +65,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         setState(() => _searchQuery = text);
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialMode != widget.initialMode) {
+      _viewMode = widget.initialMode;
+    }
   }
 
   @override
@@ -249,12 +261,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(
-                      AppSpacing.md,
+                      AppSpacing.xl,
                       AppSpacing.md,
                       AppSpacing.md,
                       AppSpacing.xs,
                     ),
                     child: _DashboardHeader(
+                      mode: _viewMode,
                       onNotificationTap: () {
                         HapticFeedback.selectionClick();
                       },
@@ -262,24 +275,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ),
                 ),
 
-                // 2. Segmented Mode Switch: Operations | Overview
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.xs,
-                    ),
-                    child: _ModeSegmentedSwitch(
-                      selectedMode: _viewMode,
-                      onModeChanged: (mode) {
-                        HapticFeedback.selectionClick();
-                        setState(() => _viewMode = mode);
-                      },
-                    ),
-                  ),
-                ),
-
-                // 3. Render View based on selected mode
+                // 2. Render View based on selected mode
                 if (_viewMode == DashboardViewMode.operations)
                   ..._buildOperationsSlivers(colors, statsAsync)
                 else
@@ -862,15 +858,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
 /// Slim Header displaying greeting and notification bell
 class _DashboardHeader extends StatelessWidget {
+  final DashboardViewMode mode;
   final VoidCallback onNotificationTap;
 
-  const _DashboardHeader({required this.onNotificationTap});
+  const _DashboardHeader({required this.mode, required this.onNotificationTap});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.gymColors;
     final isLight = Theme.of(context).brightness == Brightness.light;
     final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final title = mode == DashboardViewMode.operations
+        ? context.l10n.quickOperations
+        : context.l10n.gymOverview;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -915,7 +915,7 @@ class _DashboardHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  context.l10n.gymOverview,
+                  title,
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -958,111 +958,6 @@ class _DashboardHeader extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-/// Segmented Switch for Operations vs Overview mode
-class _ModeSegmentedSwitch extends StatelessWidget {
-  final DashboardViewMode selectedMode;
-  final ValueChanged<DashboardViewMode> onModeChanged;
-
-  const _ModeSegmentedSwitch({
-    required this.selectedMode,
-    required this.onModeChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.gymColors;
-
-    return Container(
-      height: 42,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: colors.surfaceLevel2,
-        borderRadius: AppSpacing.borderRadiusSm,
-        border: Border.all(color: colors.surfaceBorder),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _SegmentItem(
-              label: context.l10n.operations,
-              icon: Icons.dashboard_outlined,
-              isSelected: selectedMode == DashboardViewMode.operations,
-              onTap: () => onModeChanged(DashboardViewMode.operations),
-            ),
-          ),
-          Expanded(
-            child: _SegmentItem(
-              label: context.l10n.overview,
-              icon: Icons.bar_chart_rounded,
-              isSelected: selectedMode == DashboardViewMode.overview,
-              onTap: () => onModeChanged(DashboardViewMode.overview),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SegmentItem extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _SegmentItem({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.gymColors;
-
-    return Material(
-      color: isSelected ? colors.surfaceLevel1 : Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: isSelected ? Border.all(color: colors.surfaceBorder) : null,
-          ),
-          child: Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 15,
-                  color: isSelected
-                      ? colors.brandPrimary
-                      : colors.textSecondary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected
-                        ? colors.textPrimary
-                        : colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1152,9 +1047,10 @@ class _PrimaryCheckInCard extends StatelessWidget {
             onTap: onCheckInTap,
             borderRadius: AppSpacing.borderRadiusMd,
             child: Container(
+              constraints: const BoxConstraints(minHeight: 66),
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
-                vertical: 14,
+                vertical: 18,
               ),
               decoration: BoxDecoration(
                 borderRadius: AppSpacing.borderRadiusMd,
@@ -1165,14 +1061,14 @@ class _PrimaryCheckInCard extends StatelessWidget {
                   const Icon(
                     Icons.event_available_rounded,
                     color: Colors.white,
-                    size: 22,
+                    size: 24,
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Text(
                     context.l10n.quickCheckIn,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1237,26 +1133,32 @@ class _SecondaryActionButton extends StatelessWidget {
       onTap: onTap,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
-        vertical: 10,
+        vertical: 12,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 16, color: colors.brandPrimary),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: colors.textPrimary,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 58),
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: colors.brandPrimary),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

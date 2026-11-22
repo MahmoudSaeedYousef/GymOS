@@ -1,6 +1,7 @@
 enum MemberFilter {
   all,
   active,
+  expiringSoon,
   expired,
   today;
 
@@ -10,6 +11,8 @@ enum MemberFilter {
         return null;
       case MemberFilter.active:
         return 'active';
+      case MemberFilter.expiringSoon:
+        return 'active'; // Query active members from backend; filter expiring-soon locally
       case MemberFilter.expired:
         return 'expired';
       case MemberFilter.today:
@@ -22,6 +25,9 @@ enum MemberFilter {
     switch (value.trim().toLowerCase()) {
       case 'active':
         return MemberFilter.active;
+      case 'expiring_soon':
+      case 'expiringsoon':
+        return MemberFilter.expiringSoon;
       case 'expired':
         return MemberFilter.expired;
       case 'today':

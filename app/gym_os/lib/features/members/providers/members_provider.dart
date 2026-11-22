@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../../../core/database/daos/members_dao.dart';
 import '../../../core/database/database_provider.dart';
@@ -16,6 +17,7 @@ export '../models/member_sort_option.dart';
 // 2. حالة قائمة المشتركين (State)
 class MembersState {
   final List<MemberModel> members;
+  final List<MemberModel> allMembers;
   final String? nextCursor;
   final bool hasMore;
   final bool isLoading;
@@ -27,6 +29,7 @@ class MembersState {
 
   const MembersState({
     this.members = const [],
+    this.allMembers = const [],
     this.nextCursor,
     this.hasMore = true,
     this.isLoading = false,
@@ -44,6 +47,8 @@ class MembersState {
       switch (selectedFilter) {
         case MemberFilter.active:
           return m.subscriptionStatus.toLowerCase() == 'active';
+        case MemberFilter.expiringSoon:
+          return m.isExpiringSoon;
         case MemberFilter.expired:
           return m.subscriptionStatus.toLowerCase() != 'active';
         case MemberFilter.today:
@@ -56,6 +61,7 @@ class MembersState {
 
   MembersState copyWith({
     List<MemberModel>? members,
+    List<MemberModel>? allMembers,
     String? nextCursor,
     bool clearCursor = false,
     bool? hasMore,
@@ -68,6 +74,7 @@ class MembersState {
   }) {
     return MembersState(
       members: members ?? this.members,
+      allMembers: allMembers ?? this.allMembers,
       nextCursor: clearCursor ? null : (nextCursor ?? this.nextCursor),
       hasMore: hasMore ?? this.hasMore,
       isLoading: isLoading ?? this.isLoading,
@@ -96,10 +103,9 @@ class MembersNotifier extends StateNotifier<MembersState> {
   void _initStream() {
     if (_membersDao == null) return;
     _membersSubscription = _membersDao.watchAllMembers().listen((list) {
-      if (list.isNotEmpty &&
-          state.searchQuery.isEmpty &&
-          state.selectedFilter == MemberFilter.all) {
+      if (list.isNotEmpty) {
         final models = list
+            .where((m) => !m.isGuest)
             .map((m) => MemberModel(
                   id: m.id,
                   fullName: m.fullName,
@@ -109,10 +115,19 @@ class MembersNotifier extends StateNotifier<MembersState> {
                       m.subscriptionEndDate?.toIso8601String(),
                   subscriptionStatus:
                       m.status == 1 ? 'active' : 'expired',
+                  isGuest: m.isGuest,
                 ))
             .toList();
 
-        state = state.copyWith(members: models);
+        final shouldUpdateMembers =
+            state.searchQuery.isEmpty &&
+            (state.selectedFilter == MemberFilter.all ||
+             state.selectedFilter == MemberFilter.expiringSoon);
+
+        state = state.copyWith(
+          allMembers: models,
+          members: shouldUpdateMembers ? models : null,
+        );
       }
     });
   }
@@ -130,8 +145,12 @@ class MembersNotifier extends StateNotifier<MembersState> {
 
       if (!mounted) return;
 
+      final nonGuestItems = response.items.where((m) => !m.isGuest).toList();
       state = state.copyWith(
         members: response.items,
+        allMembers: (state.searchQuery.isEmpty && state.selectedFilter == MemberFilter.all)
+            ? nonGuestItems
+            : (state.allMembers.isEmpty ? nonGuestItems : state.allMembers),
         nextCursor: response.nextCursor,
         hasMore: response.hasMore,
         isLoading: false,
@@ -239,4 +258,61 @@ final membersProvider =
   final apiService = ref.watch(gymApiServiceProvider);
   final membersDao = ref.watch(membersDaoProvider);
   return MembersNotifier(apiService, membersDao);
+});
+
+// StreamProvider exposing real-time non-guest members directly from Drift
+final localMembersProvider = StreamProvider<List<MemberModel>>((ref) {
+  final dao = ref.watch(membersDaoProvider);
+  return dao.watchAllMembers().map((list) => list
+      .where((m) => !m.isGuest)
+      .map((m) => MemberModel(
+            id: m.id,
+            fullName: m.fullName,
+            phoneNumber: m.phone,
+            activePlanName: m.planName,
+            subscriptionEndDate: m.subscriptionEndDate?.toIso8601String(),
+            subscriptionStatus: m.status == 1 ? 'active' : 'expired',
+            isGuest: m.isGuest,
+          ))
+      .toList());
+});
+
+class MembersSummaryData {
+  final int totalCount;
+  final int activeCount;
+  final int expiredCount;
+  final Map<String, int> planCounts;
+
+  const MembersSummaryData({
+    this.totalCount = 0,
+    this.activeCount = 0,
+    this.expiredCount = 0,
+    this.planCounts = const {},
+  });
+}
+
+/// Dedicated Drift stream provider that watches all non-guest rows directly
+/// from the Drift `localMembers` table without pagination and independent of search/filter.
+final membersSummaryProvider = StreamProvider<MembersSummaryData>((ref) {
+  final membersDao = ref.watch(membersDaoProvider);
+  return membersDao.watchAllMembers().map((list) {
+    final nonGuestList = list.where((m) => !m.isGuest).toList();
+    final total = nonGuestList.length;
+    final active = nonGuestList.where((m) => m.status == 1).length;
+    final expired = total - active;
+
+    final planMap = <String, int>{};
+    for (final m in nonGuestList) {
+      final rawPlan = m.planName?.trim();
+      final planKey = (rawPlan != null && rawPlan.isNotEmpty) ? rawPlan : '';
+      planMap[planKey] = (planMap[planKey] ?? 0) + 1;
+    }
+
+    return MembersSummaryData(
+      totalCount: total,
+      activeCount: active,
+      expiredCount: expired,
+      planCounts: planMap,
+    );
+  });
 });

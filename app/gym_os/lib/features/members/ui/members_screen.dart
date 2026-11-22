@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gym_os/core/ui/atoms/gym_card.dart';
 import 'package:gym_os/core/utils/whatsapp_helper.dart';
+import 'package:lottie/lottie.dart';
 import 'package:gym_os/features/attendance/services/attendance_api_service.dart';
 import 'package:gym_os/features/attendance/ui/widgets/check_in_success_dialog.dart';
 import 'package:gym_os/features/payments/ui/renew_subscription_sheet.dart';
@@ -11,6 +12,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/l10n/l10n_extension.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../home/providers/dashboard_provider.dart';
 import '../models/member_model.dart';
 import '../providers/members_provider.dart';
 import 'add_member_sheet.dart';
@@ -156,6 +158,14 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
         ),
         child: Column(
           children: [
+            // Members summary card
+            _MembersSummaryCard(
+              fallbackMembers: state.allMembers.isNotEmpty
+                  ? state.allMembers
+                  : state.members,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+
             // Clean rounded search bar without redundant outer label
             Container(
               decoration: BoxDecoration(
@@ -247,6 +257,18 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                             ref
                                 .read(membersProvider.notifier)
                                 .setFilter(MemberFilter.active);
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterChipItem(
+                          label: context.l10n.filterExpiringSoon,
+                          isSelected:
+                              state.selectedFilter == MemberFilter.expiringSoon,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            ref
+                                .read(membersProvider.notifier)
+                                .setFilter(MemberFilter.expiringSoon);
                           },
                         ),
                         const SizedBox(width: 8),
@@ -390,8 +412,6 @@ class _FilterChipItem extends StatelessWidget {
   }
 }
 
-enum _MemberSubscriptionStatus { active, expiringSoon, expired, withoutPlan }
-
 class _MemberCardItem extends ConsumerStatefulWidget {
   final MemberModel member;
   const _MemberCardItem({required this.member});
@@ -402,41 +422,6 @@ class _MemberCardItem extends ConsumerStatefulWidget {
 
 class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
   bool _isCheckingIn = false;
-
-  _MemberSubscriptionStatus get _status {
-    final endDateStr = widget.member.subscriptionEndDate;
-    final planName = widget.member.activePlanName;
-    final hasNoPlan = planName == null || planName.trim().isEmpty;
-
-    // If subscription end date is null, member is without a plan
-    if (endDateStr == null || endDateStr.trim().isEmpty) {
-      return _MemberSubscriptionStatus.withoutPlan;
-    }
-
-    final endDate = DateTime.tryParse(endDateStr);
-    if (endDate == null) {
-      return _MemberSubscriptionStatus.withoutPlan;
-    }
-
-    final now = DateTime.now();
-    final daysRemaining = endDate.difference(now).inDays;
-
-    // If member has no plan but has a future subscription end date
-    if (hasNoPlan && daysRemaining >= 0) {
-      return _MemberSubscriptionStatus.withoutPlan;
-    }
-
-    final statusStr = widget.member.subscriptionStatus.toLowerCase();
-    if (statusStr != 'active' || daysRemaining < 0) {
-      return _MemberSubscriptionStatus.expired;
-    }
-
-    if (daysRemaining <= 3) {
-      return _MemberSubscriptionStatus.expiringSoon;
-    }
-
-    return _MemberSubscriptionStatus.active;
-  }
 
   Future<void> _handleCheckIn() async {
     setState(() => _isCheckingIn = true);
@@ -482,26 +467,26 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final status = _status;
+    final status = widget.member.status;
     final l10n = context.l10n;
 
     // Status colors and label
     final Color statusColor;
     final String statusLabel;
     switch (status) {
-      case _MemberSubscriptionStatus.active:
+      case MemberSubscriptionStatus.active:
         statusColor = const Color(0xFF16A34A); // Crisp Green
         statusLabel = l10n.activeStatus;
         break;
-      case _MemberSubscriptionStatus.expiringSoon:
+      case MemberSubscriptionStatus.expiringSoon:
         statusColor = const Color(0xFFD97706); // Crisp Amber
         statusLabel = l10n.expiringSoonStatus;
         break;
-      case _MemberSubscriptionStatus.expired:
+      case MemberSubscriptionStatus.expired:
         statusColor = const Color(0xFFDC2626); // Crisp Red
         statusLabel = l10n.expiredStatus;
         break;
-      case _MemberSubscriptionStatus.withoutPlan:
+      case MemberSubscriptionStatus.withoutPlan:
         statusColor = colorScheme.outline; // Neutral/Grey for no plan
         statusLabel = l10n.noPlan;
         break;
@@ -636,7 +621,7 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
           const SizedBox(width: AppSpacing.sm),
 
           // 3. Quick Action Trailing Button
-          if (status == _MemberSubscriptionStatus.active)
+          if (status == MemberSubscriptionStatus.active)
             IconButton.filledTonal(
               onPressed: _isCheckingIn ? null : _handleCheckIn,
               icon: _isCheckingIn
@@ -667,10 +652,11 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
               ),
             ),
             IconButton(
-              icon: Icon(
-                Icons.chat_bubble_outline_rounded,
-                color: const Color(0xFF16A34A),
-                size: 20,
+              icon: Lottie.asset(
+                'assets/animations/Whatsapp.json',
+                width: 24,
+                height: 24,
+                repeat: false,
               ),
               tooltip: l10n.sendWhatsappReminder,
               visualDensity: VisualDensity.compact,
@@ -780,4 +766,248 @@ String _formatExpiryDate(String? rawDate) {
     return rawDate.substring(0, 10);
   }
   return rawDate;
+}
+
+class _MembersSummaryCard extends ConsumerWidget {
+  final List<MemberModel> fallbackMembers;
+
+  const _MembersSummaryCard({
+    required this.fallbackMembers,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.gymColors;
+    final l10n = context.l10n;
+
+    final dashboardStatsAsync = ref.watch(dashboardStatsProvider);
+    final stats = dashboardStatsAsync.asData?.value;
+
+    final summaryAsync = ref.watch(membersSummaryProvider);
+    final summaryData = summaryAsync.asData?.value;
+
+    final int totalMembers;
+    final int activeCount;
+    final int expiredCount;
+    final Map<String, int> planCounts;
+
+    if (stats != null) {
+      activeCount = stats.activeMembersCount;
+      expiredCount = stats.expiredSubscriptionsCount;
+      totalMembers = activeCount + expiredCount;
+    } else if (summaryData != null && summaryData.totalCount > 0) {
+      activeCount = summaryData.activeCount;
+      expiredCount = summaryData.expiredCount;
+      totalMembers = activeCount + expiredCount;
+    } else {
+      final nonGuestMembers =
+          fallbackMembers.where((m) => !m.isGuest).toList();
+      activeCount = nonGuestMembers
+          .where((m) => m.subscriptionStatus.toLowerCase() == 'active')
+          .length;
+      expiredCount = nonGuestMembers.length - activeCount;
+      totalMembers = activeCount + expiredCount;
+    }
+
+    if (summaryData != null && summaryData.totalCount > 0) {
+      planCounts = <String, int>{};
+      for (final entry in summaryData.planCounts.entries) {
+        final label = entry.key.isEmpty ? l10n.noPlan : entry.key;
+        planCounts[label] = (planCounts[label] ?? 0) + entry.value;
+      }
+    } else {
+      final nonGuestMembers =
+          fallbackMembers.where((m) => !m.isGuest).toList();
+      planCounts = <String, int>{};
+      for (final m in nonGuestMembers) {
+        final rawPlan = m.activePlanName;
+        final planName = (rawPlan != null && rawPlan.trim().isNotEmpty)
+            ? rawPlan.trim()
+            : l10n.noPlan;
+        planCounts[planName] = (planCounts[planName] ?? 0) + 1;
+      }
+    }
+
+    return GymCard(
+      elevationLevel: 1,
+      borderRadius: AppSpacing.borderRadiusMd,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Top Row: Clean icon container + "إجمالي المشتركين" label + bold prominent total number on one side,
+          // and compact status pills (نشط: X • منتهي: Y) on the other side.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: colors.brandPrimary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.people_alt_rounded,
+                      color: colors.brandPrimary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        l10n.totalMembers,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$totalMembers',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF16A34A).withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      '${l10n.activeStatus}: $activeCount',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF16A34A),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFDC2626).withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      '${l10n.expiredStatus}: $expiredCount',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFDC2626),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          if (planCounts.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: colors.surfaceBorder.withValues(alpha: 0.7),
+              ),
+            ),
+            // Bottom Section: Clean horizontal scrollable row of plan badges, each showing
+            // plan name and crisp numeric pill badge for its count (e.g., [ شهري  45 ])
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: planCounts.entries.map((entry) {
+                  return Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceLevel2,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: colors.surfaceBorder,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            entry.key,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.brandPrimary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${entry.value}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: colors.brandPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

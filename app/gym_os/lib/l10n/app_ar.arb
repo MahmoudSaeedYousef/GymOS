@@ -110,8 +110,10 @@
   "expiredStatus": "منتهي",
   "filterAll": "الكل",
   "filterActive": "سارية",
+  "filterExpiringSoon": "ينتهي قريباً",
   "filterExpired": "منتهية",
   "filterTodayAttendance": "حضور اليوم",
+  "totalMembers": "إجمالي المشتركين",
   "expiresOn": "ينتهي {date}",
   "@expiresOn": {
     "placeholders": {
@@ -259,7 +261,8 @@
   "sortLastCheckIn": "آخر حضور",
   "splashTagline": "إدارة ذكية للجيم",
   "operations": "العمليات",
-  "overview": "نظرة عامة",
+  "overview": "المتابعة",
+  "quickOperations": "العمليات السريعة",
   "searchByNameOrPhone": "البحث بالاسم أو الهاتف...",
   "latestMembers": "أحدث المشتركين",
   "revenueSummary": "ملخص الإيرادات",

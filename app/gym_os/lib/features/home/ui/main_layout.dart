@@ -35,7 +35,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   // Default screens kept alive across tabs via AutomaticKeepAliveClientMixin
   static const List<Widget> _defaultScreens = [
-    DashboardScreen(),
+    DashboardScreen(initialMode: DashboardViewMode.overview),
+    DashboardScreen(initialMode: DashboardViewMode.operations),
     MembersScreen(),
     SettingsScreen(),
   ];
@@ -43,7 +44,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.navigationShell?.currentIndex ?? 0;
+    _currentIndex = widget.navigationShell?.currentIndex ?? 1;
     _pageController = PageController(initialPage: _currentIndex);
   }
 
@@ -111,8 +112,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   }
 
   void _handleBackNavigation() {
-    if (_currentIndex != 0) {
-      _onTabSelected(0);
+    if (_currentIndex != 1) {
+      _onTabSelected(1);
       return;
     }
 
@@ -185,9 +186,14 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         onTap: _onTabSelected,
         items: [
           FloatingNavItem(
-            icon: LucideIcons.layoutDashboard,
-            activeIcon: LucideIcons.layoutDashboard,
-            label: l10n.navDashboard,
+            icon: Icons.insights_rounded,
+            activeIcon: Icons.insights_rounded,
+            label: l10n.overview,
+          ),
+          FloatingNavItem(
+            icon: LucideIcons.activity,
+            activeIcon: LucideIcons.activity,
+            label: l10n.operations,
           ),
           FloatingNavItem(
             icon: LucideIcons.users,

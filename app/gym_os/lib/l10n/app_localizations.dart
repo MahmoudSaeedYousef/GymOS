@@ -488,6 +488,12 @@ abstract class AppLocalizations {
   /// **'سارية'**
   String get filterActive;
 
+  /// No description provided for @filterExpiringSoon.
+  ///
+  /// In ar, this message translates to:
+  /// **'ينتهي قريباً'**
+  String get filterExpiringSoon;
+
   /// No description provided for @filterExpired.
   ///
   /// In ar, this message translates to:
@@ -499,6 +505,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'حضور اليوم'**
   String get filterTodayAttendance;
+
+  /// No description provided for @totalMembers.
+  ///
+  /// In ar, this message translates to:
+  /// **'إجمالي المشتركين'**
+  String get totalMembers;
 
   /// No description provided for @expiresOn.
   ///
@@ -1073,8 +1085,14 @@ abstract class AppLocalizations {
   /// No description provided for @overview.
   ///
   /// In ar, this message translates to:
-  /// **'نظرة عامة'**
+  /// **'المتابعة'**
   String get overview;
+
+  /// No description provided for @quickOperations.
+  ///
+  /// In ar, this message translates to:
+  /// **'العمليات السريعة'**
+  String get quickOperations;
 
   /// No description provided for @searchByNameOrPhone.
   ///

@@ -56,16 +56,31 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
         branches: [
-          // Branch 0: Dashboard
+          // Branch 0: Overview (Tab 1 in RTL order)
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/overview',
+                name: 'overview',
+                builder: (context, state) => const DashboardScreen(
+                  initialMode: DashboardViewMode.overview,
+                ),
+              ),
+            ],
+          ),
+          // Branch 1: Operations (Default landing tab on app launch / post-login)
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/',
-                builder: (context, state) => const DashboardScreen(),
+                name: 'operations',
+                builder: (context, state) => const DashboardScreen(
+                  initialMode: DashboardViewMode.operations,
+                ),
               ),
             ],
           ),
-          // Branch 1: Members
+          // Branch 2: Members
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -78,7 +93,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 2: Settings
+          // Branch 3: Settings
           StatefulShellBranch(
             routes: [
               GoRoute(

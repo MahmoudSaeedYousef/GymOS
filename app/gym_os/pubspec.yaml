@@ -50,6 +50,7 @@ dependencies:
   path_provider: ^2.1.6
   connectivity_plus: ^7.3.2
   lucide_icons_flutter: ^4.0.3
+  lottie: ^3.7.0
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +76,7 @@ flutter:
 
   assets:
     - assets/icons/app_icon.png
+    - assets/animations/
 
   fonts:
     - family: Azer
