@@ -30,20 +30,51 @@ public class CheckInCommandHandler(IGymDbContext context) : IRequestHandler<Chec
 
             var checkInTime = request.OccurredAtUtc ?? request.CheckInTime ?? DateTime.UtcNow;
 
+            var recordId = (request.ClientId.HasValue && request.ClientId.Value != Guid.Empty)
+                ? request.ClientId.Value
+                : (!string.IsNullOrWhiteSpace(request.MemberId) && Guid.TryParse(request.Id, out var parsedGuid) && parsedGuid != Guid.Empty
+                    ? parsedGuid
+                    : Guid.CreateVersion7());
+
+            if (recordId == Guid.Empty)
+            {
+                recordId = Guid.CreateVersion7();
+            }
+
+            // 1. فحص ما إذا كان السجل موجوداً محلياً بالذاكرة أو بقاعدة البيانات (Idempotent retry من Offline Sync)
+            var trackedRecord = context.AttendanceRecords.Local.FirstOrDefault(a => a.Id == recordId);
+            if (trackedRecord != null)
+            {
+                if (!string.IsNullOrWhiteSpace(request.Notes) && trackedRecord.Notes != request.Notes)
+                {
+                    trackedRecord.Notes = request.Notes;
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+                return new CheckInResult(true, "تم تسجيل الحضور بنجاح.", trackedRecord.Id);
+            }
+
+            var existingRecord = await context.AttendanceRecords
+                .FirstOrDefaultAsync(a => a.Id == recordId, cancellationToken);
+
+            if (existingRecord != null)
+            {
+                if (!string.IsNullOrWhiteSpace(request.Notes) && existingRecord.Notes != request.Notes)
+                {
+                    existingRecord.Notes = request.Notes;
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+                return new CheckInResult(true, "تم تسجيل الحضور بنجاح.", existingRecord.Id);
+            }
+
+            // 2. إغلاق الجلسات المفتوحة السابقة لهذا العضو (مع استبعاد recordId)
             var openSessions = await context.AttendanceRecords
-                .Where(a => a.MemberId == member.Id && a.CheckOutTime == null)
+                .Where(a => a.MemberId == member.Id && a.CheckOutTime == null && a.Id != recordId)
                 .ToListAsync(cancellationToken);
 
             foreach (var session in openSessions)
             {
                 session.CheckOutTime = checkInTime;
             }
-
-            var recordId = (request.ClientId.HasValue && request.ClientId.Value != Guid.Empty)
-                ? request.ClientId.Value
-                : (!string.IsNullOrWhiteSpace(request.MemberId) && Guid.TryParse(request.Id, out var parsedGuid) && parsedGuid != Guid.Empty
-                    ? parsedGuid
-                    : Guid.CreateVersion7());
 
             var record = new AttendanceRecord
             {

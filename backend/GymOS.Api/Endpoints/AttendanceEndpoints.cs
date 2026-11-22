@@ -13,9 +13,12 @@ public static class AttendanceEndpoints
 {
     public static void MapAttendanceEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/attendance").RequireAuthorization();
+        MapGroup(app.MapGroup("/api/attendance").RequireAuthorization());
+        MapGroup(app.MapGroup("/api/gym/attendance").RequireAuthorization());
+    }
 
-        // الـ Endpoint خفيف جداً، مفيش أي DbContext ولا بيزنس لوجيك هنا
+    private static void MapGroup(RouteGroupBuilder group)
+    {
         group.MapPost("/check-in", async (CheckInCommand command, IMediator mediator) =>
         {
             var result = await mediator.Send(command);
@@ -38,9 +41,16 @@ public static class AttendanceEndpoints
             return Results.Ok(result);
         });
 
-        group.MapPost("/{recordId:guid}/check-out", async (Guid recordId, IMediator mediator) =>
+        group.MapPost("/check-out", async (CheckOutCommand command, IMediator mediator) =>
         {
-            var result = await mediator.Send(new CheckOutCommand(recordId));
+            var result = await mediator.Send(command);
+            return result.IsSuccess ? Results.Ok(result) : Results.BadRequest(result);
+        });
+
+        group.MapPost("/{recordId:guid}/check-out", async (Guid recordId, CheckOutCommand? command, IMediator mediator) =>
+        {
+            var cmd = (command ?? new CheckOutCommand(recordId)) with { RecordId = recordId };
+            var result = await mediator.Send(cmd);
             return result.IsSuccess ? Results.Ok(result) : Results.BadRequest(result);
         });
     }

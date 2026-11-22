@@ -4,6 +4,7 @@ using MediatR;
 namespace GymOS.Application.Features.Attendance.Commands.CheckOut;
 
 public record CheckOutCommand(
-    Guid RecordId,
+    Guid RecordId = default,
     DateTime? OccurredAtUtc = null,
-    DateTime? CheckOutTime = null) : IRequest<CheckOutResult>;
+    DateTime? CheckOutTime = null,
+    Guid? AttendanceId = null) : IRequest<CheckOutResult>;

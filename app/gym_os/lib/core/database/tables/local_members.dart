@@ -35,6 +35,9 @@ class LocalMembers extends Table {
   /// Last updated timestamp.
   DateTimeColumn get updatedAt => dateTime()();
 
+  /// Relative or full URL to member's photo.
+  TextColumn get photoUrl => text().nullable()();
+
   /// Local dirty flag: true when modified locally and awaiting sync.
   BoolColumn get isDirty => boolean().withDefault(const Constant(false))();
 

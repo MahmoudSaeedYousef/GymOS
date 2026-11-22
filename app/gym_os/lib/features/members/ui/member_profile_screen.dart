@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:gym_os/core/ui/atoms/gym_button.dart';
 import 'package:gym_os/core/ui/atoms/gym_card.dart';
 import 'package:gym_os/core/utils/whatsapp_helper.dart';
@@ -15,6 +18,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../attendance/services/attendance_api_service.dart';
 import '../models/member_model.dart';
+import '../services/gym_api_service.dart';
+import 'widgets/edit_member_sheet.dart';
+import 'widgets/member_avatar.dart';
 
 class MemberProfileScreen extends ConsumerStatefulWidget {
   final MemberModel member;
@@ -27,40 +33,31 @@ class MemberProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
+  late MemberModel _currentMember;
   bool _isCheckingIn = false;
+  bool _isUploadingPhoto = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
-  // Future<void> _handleCheckIn() async {
-  //   setState(() => _isCheckingIn = true);
-  //   try {
-  //     final message = await ref
-  //         .read(attendanceApiProvider)
-  //         .checkIn(widget.member.id);
+  @override
+  void initState() {
+    super.initState();
+    _currentMember = widget.member;
+  }
 
-  //     if (!mounted) return;
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text(message),
-  //         backgroundColor: context.gymColors.active,
-  //       ),
-  //     );
-  //   } catch (e) {
-  //     if (!mounted) return;
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text(e.toString().replaceAll('Exception: ', '')),
-  //         backgroundColor: context.gymColors.expired,
-  //       ),
-  //     );
-  //   } finally {
-  //     if (mounted) setState(() => _isCheckingIn = false);
-  //   }
-  // }
+  @override
+  void didUpdateWidget(covariant MemberProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.member != oldWidget.member) {
+      _currentMember = widget.member;
+    }
+  }
+
   Future<void> _handleCheckIn() async {
     setState(() => _isCheckingIn = true);
     try {
       final message = await ref
           .read(attendanceApiProvider)
-          .checkIn(widget.member.id);
+          .checkIn(_currentMember.id);
 
       if (!mounted) return;
 
@@ -69,7 +66,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
       // تشغيل أنيميشن تسجيل الحضور
       await showCheckInSuccessAnimation(
         context,
-        memberName: widget.member.fullName,
+        memberName: _currentMember.fullName,
         message: message,
       );
     } catch (e) {
@@ -85,16 +82,155 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
     }
   }
 
+  Future<void> _openEditDetailsSheet() async {
+    final updated = await showModalBottomSheet<MemberModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.gymColors.surfaceBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => EditMemberSheet(member: _currentMember),
+    );
+
+    if (updated != null && mounted) {
+      setState(() => _currentMember = updated);
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: context.gymColors.surfaceBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('الكاميرا', style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('المعرض', style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+      );
+
+      if (pickedFile == null) return;
+
+      File fileToUpload = File(pickedFile.path);
+      const maxSizeBytes = 500 * 1024; // 500 KB
+
+      // Convert PNG or large images to compressed JPEG (< 500 KB)
+      final isPng = fileToUpload.path.toLowerCase().endsWith('.png');
+      if (isPng || fileToUpload.lengthSync() > maxSizeBytes) {
+        try {
+          final targetPath =
+              '${fileToUpload.parent.path}/member_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final compressedXFile = await FlutterImageCompress.compressAndGetFile(
+            fileToUpload.path,
+            targetPath,
+            format: CompressFormat.jpeg,
+            minWidth: 512,
+            minHeight: 512,
+            quality: 75,
+          );
+
+          if (compressedXFile != null) {
+            fileToUpload = File(compressedXFile.path);
+          }
+        } catch (_) {
+          // If compression fails or is unsupported on platform, continue with original
+        }
+      }
+
+      if (fileToUpload.lengthSync() > maxSizeBytes) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'حجم الصورة أكبر من 500 كيلوبايت، يرجى اختيار صورة أخرى',
+            ),
+            backgroundColor: context.gymColors.expired,
+          ),
+        );
+        return;
+      }
+
+      setState(() => _isUploadingPhoto = true);
+
+      final photoUrl = await ref
+          .read(gymApiServiceProvider)
+          .uploadMemberPhoto(_currentMember.id, fileToUpload);
+
+      if (!mounted) return;
+
+      setState(() {
+        _currentMember = _currentMember.copyWith(photoUrl: photoUrl);
+      });
+
+      ref.invalidate(membersProvider);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('تم تحديث الصورة بنجاح'),
+          backgroundColor: context.gymColors.active,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll('Exception: ', ''),
+          ),
+          backgroundColor: context.gymColors.expired,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.gymColors;
-    final isActive = widget.member.subscriptionStatus.toLowerCase() == 'active';
+    final isActive = _currentMember.subscriptionStatus.toLowerCase() == 'active';
     final statusColor = isActive ? colors.active : colors.expired;
-    final isExpiringSoon = widget.member.isExpiringSoon;
+    final isExpiringSoon = _currentMember.isExpiringSoon;
     final shouldShowReminder = !isActive || isExpiringSoon;
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.memberProfileTitle)),
+      appBar: AppBar(
+        title: Text(context.l10n.memberProfileTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'تعديل بيانات المشترك',
+            onPressed: _openEditDetailsSheet,
+          ),
+        ],
+      ),
       body: ListView(
         padding: AppSpacing.screenPadding,
         children: [
@@ -102,21 +238,56 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
           GymCard(
             child: Column(
               children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: colors.brandPrimary.withValues(alpha: 0.1),
-                  child: Text(
-                    widget.member.fullName[0],
-                    style: TextStyle(
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    MemberAvatar(
+                      photoUrl: _currentMember.photoUrl,
+                      fullName: _currentMember.fullName,
+                      radius: 40,
                       fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: colors.brandPrimary,
                     ),
-                  ),
+                    if (_isUploadingPhoto)
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Material(
+                        color: colors.brandPrimary,
+                        shape: const CircleBorder(),
+                        elevation: 2,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: _isUploadingPhoto ? null : _pickAndUploadPhoto,
+                          child: const Padding(
+                            padding: EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.camera_alt_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  widget.member.fullName,
+                  _currentMember.fullName,
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -124,7 +295,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  widget.member.phoneNumber,
+                  _currentMember.phoneNumber,
                   style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -169,15 +340,15 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                 _DetailRow(
                   icon: Icons.card_membership_rounded,
                   label: context.l10n.plan,
-                  value: widget.member.activePlanName ?? context.l10n.noPlan,
+                  value: _currentMember.activePlanName ?? context.l10n.noPlan,
                 ),
-                if (widget.member.subscriptionEndDate != null) ...[
+                if (_currentMember.subscriptionEndDate != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _DetailRow(
                     icon: Icons.calendar_today_rounded,
                     label: context.l10n.endDate,
                     value: _formatProfileEndDate(
-                      widget.member.subscriptionEndDate!,
+                      _currentMember.subscriptionEndDate!,
                     ),
                   ),
                 ],
@@ -208,7 +379,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
-                builder: (_) => RenewSubscriptionSheet(member: widget.member),
+                builder: (_) => RenewSubscriptionSheet(member: _currentMember),
               );
 
               if (!context.mounted) return;
@@ -226,8 +397,8 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
               child: OutlinedButton(
                 onPressed: () => WhatsAppHelper.sendRenewalReminder(
                   context,
-                  phoneNumber: widget.member.phoneNumber,
-                  memberName: widget.member.fullName,
+                  phoneNumber: _currentMember.phoneNumber,
+                  memberName: _currentMember.fullName,
                 ),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(

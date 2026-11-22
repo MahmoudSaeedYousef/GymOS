@@ -69,6 +69,25 @@ public class RecordDropInVisitCommandHandler(
                 ? request.ClientId.Value
                 : Guid.CreateVersion7());
 
+        if (attendanceId != Guid.Empty)
+        {
+            var existingAttendance = await context.AttendanceRecords
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == attendanceId, cancellationToken);
+
+            if (existingAttendance != null)
+            {
+                return new DropInVisitResult(
+                    Succeeded: true,
+                    Message: "تم تسجيل الحصة مسبقاً.",
+                    PaymentId: paymentId,
+                    AttendanceId: existingAttendance.Id,
+                    MemberId: existingAttendance.MemberId,
+                    AmountPaid: finalAmount
+                );
+            }
+        }
+
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         try
         {
