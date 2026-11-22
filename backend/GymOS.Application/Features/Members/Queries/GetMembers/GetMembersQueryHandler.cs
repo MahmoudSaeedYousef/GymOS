@@ -47,6 +47,7 @@ public class GetMembersQueryHandler(IGymDbContext context)
             u.FullName,
             u.PhoneNumber,
             u.SubscriptionEndDate,
+            u.PhotoUrl,
             LatestSub = context.Subscriptions
                 .Where(s => s.MemberId == u.Id)
                 .OrderByDescending(s => s.EndDate)
@@ -179,7 +180,8 @@ public class GetMembersQueryHandler(IGymDbContext context)
                 u.PhoneNumber ?? "",
                 u.LatestSub?.PlanName,
                 u.LatestSub?.EndDate,
-                (u.LatestSub == null || u.SubscriptionEndDate == null || u.SubscriptionEndDate < now) ? "Expired" : "Active"))
+                (u.LatestSub == null || u.SubscriptionEndDate == null || u.SubscriptionEndDate < now) ? "Expired" : "Active",
+                u.PhotoUrl))
             .ToList();
 
         // بناء الـ NextCursor للصفحة الجاية

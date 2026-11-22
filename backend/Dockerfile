@@ -25,6 +25,7 @@ ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
 COPY --from=build /app/publish .
+RUN mkdir -p /app/wwwroot/uploads
 USER app
 
 ENTRYPOINT ["dotnet", "GymOS.Api.dll"]

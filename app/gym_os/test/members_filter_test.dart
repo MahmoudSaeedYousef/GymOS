@@ -18,7 +18,7 @@ void main() {
     test('apiValue matches backend query param', () {
       expect(MemberFilter.all.apiValue, isNull);
       expect(MemberFilter.active.apiValue, 'active');
-      expect(MemberFilter.expiringSoon.apiValue, 'active');
+      expect(MemberFilter.expiringSoon.apiValue, 'expiring_soon');
       expect(MemberFilter.expired.apiValue, 'expired');
       expect(MemberFilter.today.apiValue, 'today');
     });

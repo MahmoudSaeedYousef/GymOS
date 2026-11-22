@@ -7,12 +7,14 @@ import '../../../core/database/database_provider.dart';
 import '../models/member_filter.dart';
 import '../models/member_model.dart';
 import '../models/member_sort_option.dart';
+import '../models/members_summary_data.dart';
 import '../services/gym_api_service.dart';
 
 export '../../plans/providers/plans_provider.dart'
     show plansProvider, activePlansProvider;
 export '../models/member_filter.dart';
 export '../models/member_sort_option.dart';
+export '../models/members_summary_data.dart';
 
 // 2. حالة قائمة المشتركين (State)
 class MembersState {
@@ -277,42 +279,10 @@ final localMembersProvider = StreamProvider<List<MemberModel>>((ref) {
       .toList());
 });
 
-class MembersSummaryData {
-  final int totalCount;
-  final int activeCount;
-  final int expiredCount;
-  final Map<String, int> planCounts;
-
-  const MembersSummaryData({
-    this.totalCount = 0,
-    this.activeCount = 0,
-    this.expiredCount = 0,
-    this.planCounts = const {},
-  });
-}
-
-/// Dedicated Drift stream provider that watches all non-guest rows directly
-/// from the Drift `localMembers` table without pagination and independent of search/filter.
-final membersSummaryProvider = StreamProvider<MembersSummaryData>((ref) {
-  final membersDao = ref.watch(membersDaoProvider);
-  return membersDao.watchAllMembers().map((list) {
-    final nonGuestList = list.where((m) => !m.isGuest).toList();
-    final total = nonGuestList.length;
-    final active = nonGuestList.where((m) => m.status == 1).length;
-    final expired = total - active;
-
-    final planMap = <String, int>{};
-    for (final m in nonGuestList) {
-      final rawPlan = m.planName?.trim();
-      final planKey = (rawPlan != null && rawPlan.isNotEmpty) ? rawPlan : '';
-      planMap[planKey] = (planMap[planKey] ?? 0) + 1;
-    }
-
-    return MembersSummaryData(
-      totalCount: total,
-      activeCount: active,
-      expiredCount: expired,
-      planCounts: planMap,
-    );
-  });
+/// Lightweight Riverpod provider fetching GET /api/members/summary
+/// falling back to local Drift computation if offline/error.
+final membersSummaryProvider =
+    FutureProvider.autoDispose<MembersSummaryData>((ref) async {
+  final apiService = ref.watch(gymApiServiceProvider);
+  return apiService.getMembersSummary();
 });

@@ -12,7 +12,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/l10n/l10n_extension.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../home/providers/dashboard_provider.dart';
 import '../models/member_model.dart';
 import '../providers/members_provider.dart';
 import 'add_member_sheet.dart';
@@ -68,8 +67,8 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
     super.dispose();
   }
 
-  void _openAddMemberSheet() {
-    showModalBottomSheet(
+  void _openAddMemberSheet() async {
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: context.gymColors.surfaceBackground,
@@ -78,6 +77,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
       ),
       builder: (_) => const AddMemberSheet(),
     );
+    ref.invalidate(membersSummaryProvider);
   }
 
   void _openSortSheet() {
@@ -117,7 +117,10 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
           IconButton(
             icon: const Icon(Icons.refresh_rounded, size: 22),
             tooltip: context.l10n.refresh,
-            onPressed: () => ref.read(membersProvider.notifier).loadInitial(),
+            onPressed: () {
+              ref.invalidate(membersSummaryProvider);
+              ref.read(membersProvider.notifier).loadInitial();
+            },
           ),
           // Sleek primary pill button for "+ New Member"
           Padding(
@@ -330,8 +333,10 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                       ),
                     )
                   : RefreshIndicator(
-                      onRefresh: () =>
-                          ref.read(membersProvider.notifier).loadInitial(),
+                      onRefresh: () async {
+                        ref.invalidate(membersSummaryProvider);
+                        await ref.read(membersProvider.notifier).loadInitial();
+                      },
                       child: ListView.separated(
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -452,8 +457,8 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
     }
   }
 
-  void _handleRenew() {
-    showModalBottomSheet(
+  void _handleRenew() async {
+    final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: context.gymColors.surfaceBackground,
@@ -462,6 +467,9 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
       ),
       builder: (_) => RenewSubscriptionSheet(member: widget.member),
     );
+    if (result == true) {
+      ref.invalidate(membersSummaryProvider);
+    }
   }
 
   @override
@@ -775,13 +783,38 @@ class _MembersSummaryCard extends ConsumerWidget {
     required this.fallbackMembers,
   });
 
+  Widget _buildStatusPill({
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.gymColors;
     final l10n = context.l10n;
-
-    final dashboardStatsAsync = ref.watch(dashboardStatsProvider);
-    final stats = dashboardStatsAsync.asData?.value;
 
     final summaryAsync = ref.watch(membersSummaryProvider);
     final summaryData = summaryAsync.asData?.value;
@@ -789,43 +822,36 @@ class _MembersSummaryCard extends ConsumerWidget {
     final int totalMembers;
     final int activeCount;
     final int expiredCount;
-    final Map<String, int> planCounts;
+    final int expiringSoonCount;
+    final List<MembersSummaryPlanItem> plans;
 
-    if (stats != null) {
-      activeCount = stats.activeMembersCount;
-      expiredCount = stats.expiredSubscriptionsCount;
-      totalMembers = activeCount + expiredCount;
-    } else if (summaryData != null && summaryData.totalCount > 0) {
+    if (summaryData != null) {
+      totalMembers = summaryData.totalCount;
       activeCount = summaryData.activeCount;
       expiredCount = summaryData.expiredCount;
-      totalMembers = activeCount + expiredCount;
+      expiringSoonCount = summaryData.expiringSoonCount;
+      plans = summaryData.plans;
     } else {
       final nonGuestMembers =
           fallbackMembers.where((m) => !m.isGuest).toList();
+      totalMembers = nonGuestMembers.length;
       activeCount = nonGuestMembers
           .where((m) => m.subscriptionStatus.toLowerCase() == 'active')
           .length;
-      expiredCount = nonGuestMembers.length - activeCount;
-      totalMembers = activeCount + expiredCount;
-    }
+      expiredCount = totalMembers - activeCount;
+      expiringSoonCount = nonGuestMembers.where((m) => m.isExpiringSoon).length;
 
-    if (summaryData != null && summaryData.totalCount > 0) {
-      planCounts = <String, int>{};
-      for (final entry in summaryData.planCounts.entries) {
-        final label = entry.key.isEmpty ? l10n.noPlan : entry.key;
-        planCounts[label] = (planCounts[label] ?? 0) + entry.value;
-      }
-    } else {
-      final nonGuestMembers =
-          fallbackMembers.where((m) => !m.isGuest).toList();
-      planCounts = <String, int>{};
+      final planMap = <String, int>{};
       for (final m in nonGuestMembers) {
         final rawPlan = m.activePlanName;
         final planName = (rawPlan != null && rawPlan.trim().isNotEmpty)
             ? rawPlan.trim()
-            : l10n.noPlan;
-        planCounts[planName] = (planCounts[planName] ?? 0) + 1;
+            : '';
+        planMap[planName] = (planMap[planName] ?? 0) + 1;
       }
+      plans = planMap.entries
+          .map((e) => MembersSummaryPlanItem(planName: e.key, count: e.value))
+          .toList();
     }
 
     return GymCard(
@@ -837,7 +863,7 @@ class _MembersSummaryCard extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Top Row: Clean icon container + "إجمالي المشتركين" label + bold prominent total number on one side,
-          // and compact status pills (نشط: X • منتهي: Y) on the other side.
+          // and compact status pills (نشط: X • ينتهي قريباً: Y • منتهي: Z) on the other side.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -884,60 +910,33 @@ class _MembersSummaryCard extends ConsumerWidget {
                   ),
                 ],
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    _buildStatusPill(
+                      label: '${l10n.activeStatus}: $activeCount',
+                      color: const Color(0xFF16A34A),
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF16A34A).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFF16A34A).withValues(alpha: 0.25),
-                        width: 1,
-                      ),
+                    _buildStatusPill(
+                      label: '${l10n.expiringSoonStatus}: $expiringSoonCount',
+                      color: const Color(0xFFD97706),
                     ),
-                    child: Text(
-                      '${l10n.activeStatus}: $activeCount',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF16A34A),
-                      ),
+                    _buildStatusPill(
+                      label: '${l10n.expiredStatus}: $expiredCount',
+                      color: const Color(0xFFDC2626),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDC2626).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFFDC2626).withValues(alpha: 0.25),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      '${l10n.expiredStatus}: $expiredCount',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFDC2626),
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
 
-          if (planCounts.isNotEmpty) ...[
+          if (plans.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
               child: Divider(
@@ -952,7 +951,10 @@ class _MembersSummaryCard extends ConsumerWidget {
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               child: Row(
-                children: planCounts.entries.map((entry) {
+                children: plans.map((planItem) {
+                  final displayName = planItem.planName.trim().isEmpty
+                      ? l10n.noPlan
+                      : planItem.planName;
                   return Padding(
                     padding: const EdgeInsetsDirectional.only(end: 8),
                     child: Container(
@@ -972,7 +974,7 @@ class _MembersSummaryCard extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            entry.key,
+                            displayName,
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
@@ -990,7 +992,7 @@ class _MembersSummaryCard extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '${entry.value}',
+                              '${planItem.count}',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,

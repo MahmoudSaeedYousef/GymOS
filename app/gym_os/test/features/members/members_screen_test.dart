@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gym_os/core/theme/app_theme.dart';
 import 'package:gym_os/features/attendance/services/attendance_api_service.dart';
 import 'package:gym_os/features/members/models/member_model.dart';
+import 'package:gym_os/features/members/providers/members_provider.dart';
 import 'package:gym_os/features/members/services/gym_api_service.dart';
 import 'package:gym_os/features/members/ui/members_screen.dart';
 import 'package:gym_os/l10n/app_localizations.dart';
@@ -22,10 +23,43 @@ class _FakeGymApiService extends GymApiService {
     String? filter,
     String? sortBy,
   }) async {
+    var result = members;
+    if (filter == 'active') {
+      result = result.where((m) => m.subscriptionStatus.toLowerCase() == 'active').toList();
+    } else if (filter == 'expiring_soon') {
+      result = result.where((m) => m.isExpiringSoon).toList();
+    } else if (filter == 'expired') {
+      result = result.where((m) => m.subscriptionStatus.toLowerCase() != 'active').toList();
+    }
     return PagedMembersResponse(
-      items: members,
+      items: result,
       nextCursor: null,
       hasMore: false,
+    );
+  }
+
+  @override
+  Future<MembersSummaryData> getMembersSummary() async {
+    final nonGuest = members.where((m) => !m.isGuest).toList();
+    final active = nonGuest.where((m) => m.subscriptionStatus.toLowerCase() == 'active').length;
+    final expired = nonGuest.where((m) => m.subscriptionStatus.toLowerCase() != 'active').length;
+    final expiringSoon = nonGuest.where((m) => m.isExpiringSoon).length;
+    final planMap = <String, int>{};
+    for (final m in nonGuest) {
+      final rawPlan = m.activePlanName?.trim();
+      final planKey = (rawPlan != null && rawPlan.isNotEmpty) ? rawPlan : '';
+      planMap[planKey] = (planMap[planKey] ?? 0) + 1;
+    }
+    final planItems = planMap.entries
+        .map((e) => MembersSummaryPlanItem(planName: e.key, count: e.value))
+        .toList();
+    return MembersSummaryData(
+      totalCount: nonGuest.length,
+      activeCount: active,
+      expiredCount: expired,
+      expiringSoonCount: expiringSoon,
+      plans: planItems,
+      planCounts: planMap,
     );
   }
 }
@@ -244,6 +278,7 @@ void main() {
       expect(find.text('Basic Plan'), findsOneWidget);
       expect(find.text('بدون باقة'), findsWidgets);
       expect(find.text('نشط: 4'), findsOneWidget);
+      expect(find.text('ينتهي قريباً: 1'), findsOneWidget);
       expect(find.text('منتهي: 1'), findsOneWidget);
     });
 

@@ -61,12 +61,19 @@ builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
 builder.Services.AddScoped<IGymDbContext>(sp => sp.GetRequiredService<GymDbContext>());
 builder.Services.AddMediatR(cfg => 
     cfg.RegisterServicesFromAssembly(typeof(CreatePlanCommand).Assembly));
+var uploadsDirectory = Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "uploads");
+if (!Directory.Exists(uploadsDirectory))
+{
+    Directory.CreateDirectory(uploadsDirectory);
+}
+
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<GymDbContext>();
     await dbContext.Database.MigrateAsync();
 }
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseIdempotency();

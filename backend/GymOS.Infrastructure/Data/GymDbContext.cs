@@ -34,6 +34,10 @@ public class GymDbContext(
             .HasIndex(u => new { u.TenantId, u.PhoneNumber })
             .IsUnique();
 
+        builder.Entity<ApplicationUser>()
+            .Property(u => u.PhotoUrl)
+            .HasMaxLength(500);
+
         // GIN Index على الاسم الكامل للبحث الفوري بالـ Trigrams
         builder.Entity<ApplicationUser>()
             .HasIndex(u => u.FullName)
