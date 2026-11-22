@@ -6,4 +6,5 @@ public record MemberDto(
     string PhoneNumber,
     string? ActivePlanName,
     DateOnly? SubscriptionEndDate,
-    string SubscriptionStatus);
+    string SubscriptionStatus,
+    string? PhotoUrl = null);

@@ -37,12 +37,16 @@ services:
       Jwt__Key: ${JWT_KEY}
       Jwt__Issuer: ${JWT_ISSUER}
       Jwt__Audience: ${JWT_AUDIENCE}
+    volumes:
+      - gymos_uploads:/app/wwwroot/uploads
     networks:
       - gymos-internal
 
 volumes:
   gymos_pgdata:
     name: gymos_pgdata
+  gymos_uploads:
+    name: gymos_uploads
 
 networks:
   gymos-internal:
