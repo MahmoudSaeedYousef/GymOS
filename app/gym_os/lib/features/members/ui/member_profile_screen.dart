@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:gym_os/features/attendance/ui/widgets/check_in_success_dialog.dart';
 import 'package:gym_os/features/members/providers/members_provider.dart';
 import 'package:gym_os/features/payments/ui/renew_subscription_sheet.dart';
+import 'package:lottie/lottie.dart';
 import '../../../core/l10n/l10n_extension.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
@@ -87,20 +88,9 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.gymColors;
-    final isActive =
-        widget.member.subscriptionStatus.toLowerCase() == 'active';
+    final isActive = widget.member.subscriptionStatus.toLowerCase() == 'active';
     final statusColor = isActive ? colors.active : colors.expired;
-
-    bool isExpiringSoon = false;
-    if (widget.member.subscriptionEndDate != null) {
-      final endDate = DateTime.tryParse(widget.member.subscriptionEndDate!);
-      if (endDate != null) {
-        final daysRemaining = endDate.difference(DateTime.now()).inDays;
-        if (daysRemaining <= 3) {
-          isExpiringSoon = true;
-        }
-      }
-    }
+    final isExpiringSoon = widget.member.isExpiringSoon;
     final shouldShowReminder = !isActive || isExpiringSoon;
 
     return Scaffold(
@@ -179,15 +169,16 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                 _DetailRow(
                   icon: Icons.card_membership_rounded,
                   label: context.l10n.plan,
-                  value:
-                      widget.member.activePlanName ?? context.l10n.noPlan,
+                  value: widget.member.activePlanName ?? context.l10n.noPlan,
                 ),
                 if (widget.member.subscriptionEndDate != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _DetailRow(
                     icon: Icons.calendar_today_rounded,
                     label: context.l10n.endDate,
-                    value: _formatProfileEndDate(widget.member.subscriptionEndDate!),
+                    value: _formatProfileEndDate(
+                      widget.member.subscriptionEndDate!,
+                    ),
                   ),
                 ],
               ],
@@ -232,20 +223,11 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
             SizedBox(
               width: double.infinity,
               height: 50,
-              child: OutlinedButton.icon(
+              child: OutlinedButton(
                 onPressed: () => WhatsAppHelper.sendRenewalReminder(
                   context,
                   phoneNumber: widget.member.phoneNumber,
                   memberName: widget.member.fullName,
-                ),
-                icon: Icon(Icons.chat_rounded, color: colors.active, size: 20),
-                label: Text(
-                  context.l10n.sendWhatsappReminder,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: colors.active,
-                  ),
                 ),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(
@@ -256,6 +238,26 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                   shape: const RoundedRectangleBorder(
                     borderRadius: AppSpacing.borderRadius,
                   ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Lottie.asset(
+                      'assets/animations/Whatsapp.json',
+                      width: 26,
+                      height: 26,
+                      repeat: false,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      context.l10n.sendWhatsappReminder,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colors.active,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             )
@@ -304,4 +306,3 @@ String _formatProfileEndDate(String rawDate) {
   }
   return rawDate;
 }
-

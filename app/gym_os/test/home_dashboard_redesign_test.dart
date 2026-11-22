@@ -57,6 +57,7 @@ void main() {
   Widget createWidgetUnderTest({
     Locale locale = const Locale('en'),
     double textScale = 1.0,
+    DashboardViewMode initialMode = DashboardViewMode.operations,
   }) {
     return ProviderScope(
       overrides: [
@@ -83,19 +84,15 @@ void main() {
           ),
           child: child!,
         ),
-        home: const DashboardScreen(),
+        home: DashboardScreen(initialMode: initialMode),
       ),
     );
   }
 
-  testWidgets('Segmented switch defaults to Operations and shows primary check-in', (tester) async {
+  testWidgets('DashboardScreen defaults to Operations and shows primary check-in', (tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-
-    // Default mode should display "Operations" & "Overview" segmented options
-    expect(find.text('Operations'), findsOneWidget);
-    expect(find.text('Overview'), findsOneWidget);
 
     // Header displays app logo with semantic label
     expect(find.bySemanticsLabel('Gymmy logo'), findsOneWidget);
@@ -110,13 +107,10 @@ void main() {
     expect(find.text('Latest Members'), findsOneWidget);
   });
 
-  testWidgets('Tapping Overview switches to read-only Overview view hiding mutating actions', (tester) async {
-    await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
-    // Tap on Overview segment
-    await tester.tap(find.text('Overview'));
+  testWidgets('Overview mode displays read-only Overview view hiding mutating actions', (tester) async {
+    await tester.pumpWidget(createWidgetUnderTest(
+      initialMode: DashboardViewMode.overview,
+    ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
@@ -158,14 +152,9 @@ void main() {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const DashboardScreen(),
+        home: const DashboardScreen(initialMode: DashboardViewMode.overview),
       ),
     ));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
-    // Tap Overview
-    await tester.tap(find.text('Overview'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 

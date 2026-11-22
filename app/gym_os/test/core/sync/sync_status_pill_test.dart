@@ -64,7 +64,7 @@ void main() {
     );
   }
 
-  testWidgets('SyncStatusPill shows Synced when online and 0 pending items', (tester) async {
+  testWidgets('SyncStatusPill shows sync icon and tooltip when online and 0 pending items', (tester) async {
     final container = ProviderContainer(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
@@ -77,10 +77,13 @@ void main() {
     await tester.pumpWidget(buildTestPill(container: container));
     await tester.pumpAndSettle();
 
-    expect(find.text('Synced'), findsOneWidget);
+    expect(find.byIcon(Icons.sync_rounded), findsOneWidget);
+    expect(find.byType(Tooltip), findsOneWidget);
+    final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
+    expect(tooltip.message, 'Synced');
   });
 
-  testWidgets('SyncStatusPill displays Arabic text when locale is Arabic', (tester) async {
+  testWidgets('SyncStatusPill displays Arabic tooltip when locale is Arabic', (tester) async {
     final container = ProviderContainer(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
@@ -96,10 +99,12 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('متزامن'), findsOneWidget);
+    expect(find.byIcon(Icons.sync_rounded), findsOneWidget);
+    final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
+    expect(tooltip.message, 'متزامن');
   });
 
-  testWidgets('SyncStatusPill shows Offline with queued count when offline and pending > 0', (tester) async {
+  testWidgets('SyncStatusPill shows badge with count when offline and pending > 0', (tester) async {
     testConnectivity.current = [ConnectivityResult.none];
 
     // Seed outbox
@@ -125,10 +130,13 @@ void main() {
     await tester.pumpWidget(buildTestPill(container: container));
     await tester.pumpAndSettle();
 
-    expect(find.text('Offline • 1 queued'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+    expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
+    final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
+    expect(tooltip.message, 'Offline • 1 queued');
   });
 
-  testWidgets('SyncStatusPill shows Offline when offline and pending == 0', (tester) async {
+  testWidgets('SyncStatusPill shows Offline tooltip and dot when offline and pending == 0', (tester) async {
     testConnectivity.current = [ConnectivityResult.none];
 
     final container = ProviderContainer(
@@ -143,6 +151,8 @@ void main() {
     await tester.pumpWidget(buildTestPill(container: container));
     await tester.pumpAndSettle();
 
-    expect(find.text('Offline'), findsOneWidget);
+    expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
+    final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
+    expect(tooltip.message, 'Offline');
   });
 }

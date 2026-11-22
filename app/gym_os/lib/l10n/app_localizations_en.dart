@@ -216,10 +216,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filterActive => 'Active';
 
   @override
+  String get filterExpiringSoon => 'Expiring Soon';
+
+  @override
   String get filterExpired => 'Expired';
 
   @override
   String get filterTodayAttendance => 'Today\'s Check-ins';
+
+  @override
+  String get totalMembers => 'Total Members';
 
   @override
   String expiresOn(String date) {
@@ -521,7 +527,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get operations => 'Operations';
 
   @override
-  String get overview => 'Overview';
+  String get overview => 'Insights';
+
+  @override
+  String get quickOperations => 'Quick Operations';
 
   @override
   String get searchByNameOrPhone => 'Search name or phone...';

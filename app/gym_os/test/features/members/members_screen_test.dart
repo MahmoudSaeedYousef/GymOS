@@ -150,6 +150,7 @@ void main() {
 
       expect(find.text('الكل'), findsOneWidget);
       expect(find.text('سارية'), findsOneWidget);
+      expect(find.text('ينتهي قريباً'), findsWidgets);
       expect(find.text('منتهية'), findsOneWidget);
       expect(find.text('حضور اليوم'), findsOneWidget);
 
@@ -177,9 +178,9 @@ void main() {
 
       // Dynamic status badges
       expect(find.text('نشط'), findsOneWidget);
-      expect(find.text('ينتهي قريباً'), findsOneWidget);
+      expect(find.text('ينتهي قريباً'), findsWidgets);
       expect(find.text('منتهي'), findsOneWidget);
-      expect(find.text('بدون باقة'), findsNWidgets(2));
+      expect(find.text('بدون باقة'), findsAtLeastNWidgets(2));
 
       // Quick action check-in fingerprint button on active member
       expect(find.byIcon(Icons.fingerprint_rounded), findsOneWidget);
@@ -201,7 +202,7 @@ void main() {
       expect(find.text('All'), findsOneWidget);
       // 'Active' is present in the filter chip and status badge
       expect(find.text('Active'), findsAtLeastNWidgets(1));
-      expect(find.text('Expiring Soon'), findsOneWidget);
+      expect(find.text('Expiring Soon'), findsAtLeastNWidgets(1));
       // 'Expired' is present in filter chip and status badge
       expect(find.text('Expired'), findsAtLeastNWidgets(1));
       expect(tester.takeException(), isNull);
@@ -227,6 +228,43 @@ void main() {
       // and all members (including expired Khaled Hassan) should be visible again
       expect(find.text('Khaled Hassan'), findsOneWidget);
       expect(find.text('Ahmed Ali'), findsOneWidget);
+    });
+
+    testWidgets('renders summary card with total count and plan breakdown pills', (tester) async {
+      tester.view.physicalSize = const Size(1200, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(createTestWidget(locale: const Locale('ar')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('إجمالي المشتركين'), findsOneWidget);
+      expect(find.text('Monthly Gold'), findsOneWidget);
+      expect(find.text('Yearly VIP'), findsOneWidget);
+      expect(find.text('Basic Plan'), findsOneWidget);
+      expect(find.text('بدون باقة'), findsWidgets);
+      expect(find.text('نشط: 4'), findsOneWidget);
+      expect(find.text('منتهي: 1'), findsOneWidget);
+    });
+
+    testWidgets('filtering by expiring soon shows only members expiring within 5 days', (tester) async {
+      tester.view.physicalSize = const Size(1200, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(createTestWidget(locale: const Locale('ar')));
+      await tester.pumpAndSettle();
+
+      // Tap 'ينتهي قريباً' filter chip (first widget with this text)
+      await tester.tap(find.text('ينتهي قريباً').first);
+      await tester.pumpAndSettle();
+
+      // Sara Mohamed expires in 2 days (expiring soon)
+      expect(find.text('Sara Mohamed'), findsOneWidget);
+      // Ahmed Ali expires in 30 days (not expiring soon)
+      expect(find.text('Ahmed Ali'), findsNothing);
+      // Khaled Hassan is expired
+      expect(find.text('Khaled Hassan'), findsNothing);
     });
   });
 }

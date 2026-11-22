@@ -1,5 +1,6 @@
 using GymOS.Application.Features.Members.Commands.CreateMember;
 using GymOS.Application.Features.Members.Queries.GetMembers;
+using GymOS.Application.Features.Members.Queries.GetMembersSummary;
 using GymOS.Application.Features.Plans;
 using GymOS.Application.Features.Plans.Commands.CreatePlan;
 using GymOS.Application.Features.Plans.Queries.GetPlans;
@@ -38,9 +39,30 @@ public static class GymEndpoints
             return Results.Created($"/api/gym/members/{id}", new { id });
         });
 
+        group.MapGet("/members/summary", async (ISender sender) =>
+        {
+            var summary = await sender.Send(new GetMembersSummaryQuery());
+            return Results.Ok(summary);
+        });
+
         group.MapGet("/members", async (string? search, string? cursor,string? filter, string? sortBy, int? pageSize, ISender sender) =>
         {
             var result = await sender.Send(new GetMembersQuery(search, cursor,filter, sortBy, pageSize ?? 20));
+            return Results.Ok(result);
+        });
+
+        // Map root /api/members routes to support direct /api/members pathing as well
+        var membersGroup = app.MapGroup("/api/members").RequireAuthorization();
+
+        membersGroup.MapGet("/summary", async (ISender sender) =>
+        {
+            var summary = await sender.Send(new GetMembersSummaryQuery());
+            return Results.Ok(summary);
+        });
+
+        membersGroup.MapGet("/", async (string? search, string? cursor, string? filter, string? sortBy, int? pageSize, ISender sender) =>
+        {
+            var result = await sender.Send(new GetMembersQuery(search, cursor, filter, sortBy, pageSize ?? 20));
             return Results.Ok(result);
         });
     }

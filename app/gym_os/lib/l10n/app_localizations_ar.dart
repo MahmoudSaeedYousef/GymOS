@@ -217,10 +217,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get filterActive => 'سارية';
 
   @override
+  String get filterExpiringSoon => 'ينتهي قريباً';
+
+  @override
   String get filterExpired => 'منتهية';
 
   @override
   String get filterTodayAttendance => 'حضور اليوم';
+
+  @override
+  String get totalMembers => 'إجمالي المشتركين';
 
   @override
   String expiresOn(String date) {
@@ -522,7 +528,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get operations => 'العمليات';
 
   @override
-  String get overview => 'نظرة عامة';
+  String get overview => 'المتابعة';
+
+  @override
+  String get quickOperations => 'العمليات السريعة';
 
   @override
   String get searchByNameOrPhone => 'البحث بالاسم أو الهاتف...';

@@ -19,10 +19,14 @@ public class GetMembersQueryHandler(IGymDbContext context)
         var query = context.Users.AsNoTracking().Where(c=>!c.IsGuest);
 
         // 1. الفلترة
+        var fiveDaysFromToday = today.AddDays(5);
         query = request.Filter?.ToLower() switch
         {
             "active" => query.Where(u => u.SubscriptionEndDate >= now),
             "expired" => query.Where(u => u.SubscriptionEndDate < now || u.SubscriptionEndDate == null),
+            "expiring_soon" or "expiringsoon" => query.Where(u =>
+                u.SubscriptionEndDate >= today &&
+                u.SubscriptionEndDate <= fiveDaysFromToday),
             "today" => query.Where(u => context.AttendanceRecords
                 .Any(a => a.MemberId == u.Id && a.CheckInTime >= today)),
             _ => query
