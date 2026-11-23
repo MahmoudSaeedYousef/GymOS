@@ -545,7 +545,9 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
         return 'بدون تاريخ انتهاء';
 
       case MemberSortOption.endDateDesc:
-        final formattedDate = _formatExpiryDate(widget.member.subscriptionEndDate);
+        final formattedDate = _formatExpiryDate(
+          widget.member.subscriptionEndDate,
+        );
         if (formattedDate.isNotEmpty) {
           return 'ينتهي $formattedDate';
         }
@@ -568,13 +570,19 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
     final colorScheme = Theme.of(context).colorScheme;
     final status = widget.member.status;
     final l10n = context.l10n;
+    final isSingleSession = widget.member.isSingleSession ||
+        widget.member.activePlanName == 'حصة منفردة' ||
+        widget.member.activePlanName == l10n.singleSession;
 
-    // Status colors and label (Exceptions Only: Expiring Soon or Expired)
+    // Status colors and label (Exceptions Only: Expiring Soon or Expired, or Single Session)
     Color? statusColor;
     String? statusLabel;
     final days = _daysRemaining;
 
-    if (status == MemberSubscriptionStatus.expiringSoon) {
+    if (isSingleSession) {
+      statusColor = const Color(0xFFD97706); // Amber badge for single session
+      statusLabel = l10n.singleSession;
+    } else if (status == MemberSubscriptionStatus.expiringSoon) {
       statusColor = const Color(0xFFD97706); // Crisp Amber
       if (days != null) {
         if (days == 0) {
@@ -609,19 +617,42 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
     final isPlanSort = widget.selectedSort == MemberSortOption.plan;
 
     return GymCard(
-      onTap: () {
-        context.pushNamed('memberProfile', extra: widget.member);
-      },
+      onTap: isSingleSession
+          ? null
+          : () {
+              context.pushNamed('memberProfile', extra: widget.member);
+            },
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // 1. Leading Avatar: 44dp circular network/fallback badge
-          MemberAvatar(
-            photoUrl: widget.member.photoUrl,
-            fullName: widget.member.fullName,
-            radius: 22,
-            fontSize: 18,
+          Container(
+            padding: const EdgeInsets.all(0),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: isSingleSession
+                    ? const Color(0xFFD97706)
+                    : (widget.member.subscriptionStatus.toLowerCase() ==
+                            MemberSubscriptionStatus.active.name.toLowerCase()
+                        ? const Color.fromARGB(255, 9, 137, 75)
+                        : widget.member.subscriptionStatus.toLowerCase() ==
+                              MemberSubscriptionStatus.expiringSoon.name
+                                  .toLowerCase()
+                        ? context.gymColors.warning
+                        : context.gymColors.expired),
+                width: 1.2,
+              ),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            child: MemberAvatar(
+              photoUrl: widget.member.photoUrl,
+              fullName: widget.member.fullName,
+              gender: widget.member.gender,
+              radius: 22,
+              fontSize: 18,
+            ),
           ),
+
           const SizedBox(width: AppSpacing.md),
 
           // 2. Middle Info Column
@@ -676,13 +707,29 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
                 // Line 2: Contextual Metadata (PlanName • ContextualInfo)
                 Row(
                   children: [
-                    if (planName != null && planName.trim().isNotEmpty) ...[
+                    if (isSingleSession) ...[
+                      Expanded(
+                        child: Text(
+                          l10n.singleSessionToday,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.85,
+                            ),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ] else if (planName != null && planName.trim().isNotEmpty) ...[
                       Text(
                         planName,
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight:
-                              isPlanSort ? FontWeight.w600 : FontWeight.normal,
+                          fontWeight: isPlanSort
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                           color: isPlanSort
                               ? colorScheme.primary
                               : colorScheme.onSurfaceVariant.withValues(
@@ -768,7 +815,9 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
           const SizedBox(width: AppSpacing.sm),
 
           // 3. Quick Action Trailing Button
-          if (status == MemberSubscriptionStatus.active)
+          if (isSingleSession)
+            const SizedBox.shrink()
+          else if (status == MemberSubscriptionStatus.active)
             IconButton.filledTonal(
               onPressed: _isCheckingIn ? null : _handleCheckIn,
               icon: _isCheckingIn
@@ -923,26 +972,15 @@ String _formatExpiryDate(String? rawDate) {
 class _MembersSummaryCard extends ConsumerWidget {
   final List<MemberModel> fallbackMembers;
 
-  const _MembersSummaryCard({
-    required this.fallbackMembers,
-  });
+  const _MembersSummaryCard({required this.fallbackMembers});
 
-  Widget _buildStatusPill({
-    required String label,
-    required Color color,
-  }) {
+  Widget _buildStatusPill({required String label, required Color color}) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withValues(alpha: 0.25),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
       ),
       child: Text(
         label,
@@ -976,8 +1014,7 @@ class _MembersSummaryCard extends ConsumerWidget {
       expiringSoonCount = summaryData.expiringSoonCount;
       plans = summaryData.plans;
     } else {
-      final nonGuestMembers =
-          fallbackMembers.where((m) => !m.isGuest).toList();
+      final nonGuestMembers = fallbackMembers.where((m) => !m.isGuest).toList();
       totalMembers = nonGuestMembers.length;
       activeCount = nonGuestMembers
           .where((m) => m.subscriptionStatus.toLowerCase() == 'active')
@@ -1132,7 +1169,9 @@ class _MembersSummaryCard extends ConsumerWidget {
                               vertical: 1.5,
                             ),
                             decoration: BoxDecoration(
-                              color: colors.brandPrimary.withValues(alpha: 0.12),
+                              color: colors.brandPrimary.withValues(
+                                alpha: 0.12,
+                              ),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(

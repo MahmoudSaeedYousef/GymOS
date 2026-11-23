@@ -79,6 +79,7 @@ flutter:
   assets:
     - assets/icons/app_icon.png
     - assets/animations/
+    - assets/images/
 
   fonts:
     - family: Azer

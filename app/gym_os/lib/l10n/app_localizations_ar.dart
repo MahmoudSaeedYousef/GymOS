@@ -686,4 +686,40 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get keepEditing => 'متابعة التعديل';
+
+  @override
+  String get gender => 'النوع';
+
+  @override
+  String get genderMale => 'ذكر';
+
+  @override
+  String get genderFemale => 'أنثى';
+
+  @override
+  String get deletePhotoTitle => 'حذف صورة المشترك';
+
+  @override
+  String get deletePhotoConfirmMessage => 'هل أنت متأكد من حذف صورة المشترك؟';
+
+  @override
+  String get deletePhotoSuccess => 'تم حذف الصورة بنجاح';
+
+  @override
+  String get removePhoto => 'حذف الصورة';
+
+  @override
+  String get photoSourceCamera => 'الكاميرا';
+
+  @override
+  String get photoSourceGallery => 'المعرض';
+
+  @override
+  String get delete => 'حذف';
+
+  @override
+  String get singleSession => 'حصة منفردة';
+
+  @override
+  String get singleSessionToday => 'حصة منفردة • اليوم';
 }

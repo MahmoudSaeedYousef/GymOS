@@ -497,6 +497,14 @@ class SyncEngine {
         final rawPhoto = map['photoUrl'] ?? map['photo_url'];
         final photoStr = rawPhoto?.toString();
 
+        final rawGender = map['gender'];
+        int genderVal = 0;
+        if (rawGender is int) {
+          genderVal = rawGender;
+        } else if (rawGender != null) {
+          genderVal = int.tryParse(rawGender.toString()) ?? 0;
+        }
+
         return LocalMembersCompanion.insert(
           id: map['id']?.toString() ?? '',
           fullName: map['fullName']?.toString() ?? '',
@@ -508,6 +516,7 @@ class SyncEngine {
           photoUrl: hasPhoto && photoStr != null && photoStr.isNotEmpty
               ? Value(photoStr)
               : const Value.absent(),
+          gender: Value(genderVal),
           status: Value(isActive ? 1 : 0),
           updatedAt: DateTime.now(),
           isDirty: const Value(false),

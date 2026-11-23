@@ -252,4 +252,112 @@ public class MembersSummaryAndFilterTests
         Assert.Equal(2, summary.Plans.Count);
         Assert.All(summary.Plans, p => Assert.Equal(2, p.Count));
     }
+
+    [Fact]
+    public async Task GetMembers_WithFilterToday_IncludesBothSubscribedMembersAndGuestSingleSessions()
+    {
+        // Arrange
+        var tenantId = Guid.NewGuid();
+        var context = TestDbContextFactory.Create(tenantId.ToString());
+
+        var today = DateTime.UtcNow.Date;
+
+        // 4 Subscribed members with today's attendance
+        var subMembers = Enumerable.Range(1, 4).Select(i => new ApplicationUser
+        {
+            Id = $"sub_mem_{i}",
+            TenantId = tenantId,
+            FullName = $"عضو مشترك {i}",
+            PhoneNumber = $"0101111000{i}",
+            Type = UserType.Member,
+            SubscriptionEndDate = today.AddMonths(1),
+            IsGuest = false
+        }).ToList();
+
+        // 3 Guest / single-session check-ins with today's attendance
+        var guestUsers = Enumerable.Range(1, 3).Select(i => new ApplicationUser
+        {
+            Id = $"guest_session_{i}",
+            TenantId = tenantId,
+            FullName = i == 1 ? "زائر حصة مفردة" : $"زائر اسم {i}",
+            PhoneNumber = $"0109999000{i}",
+            Type = UserType.Member,
+            SubscriptionEndDate = null,
+            IsGuest = true
+        }).ToList();
+
+        // 1 Subscribed member with NO attendance today (should NOT appear in today's filter)
+        var memberNoAttendance = new ApplicationUser
+        {
+            Id = "sub_mem_no_attendance",
+            TenantId = tenantId,
+            FullName = "عضو لم يحضر اليوم",
+            PhoneNumber = "01077777777",
+            Type = UserType.Member,
+            SubscriptionEndDate = today.AddMonths(1),
+            IsGuest = false
+        };
+
+        context.Users.AddRange(subMembers);
+        context.Users.AddRange(guestUsers);
+        context.Users.Add(memberNoAttendance);
+
+        // Add today attendance records for 4 subscribed members
+        foreach (var m in subMembers)
+        {
+            context.AttendanceRecords.Add(new AttendanceRecord
+            {
+                TenantId = tenantId.ToString(),
+                MemberId = m.Id,
+                CheckInTime = today.AddHours(10)
+            });
+        }
+
+        // Add today attendance records for 3 guest single-session visitors
+        foreach (var g in guestUsers)
+        {
+            context.AttendanceRecords.Add(new AttendanceRecord
+            {
+                TenantId = tenantId.ToString(),
+                MemberId = g.Id,
+                CheckInTime = today.AddHours(11),
+                Notes = "حصة مفردة"
+            });
+        }
+
+        await context.SaveChangesAsync();
+
+        var handler = new GetMembersQueryHandler(context);
+
+        // Act
+        var result = await handler.Handle(new GetMembersQuery(Filter: "today", PageSize: 20), CancellationToken.None);
+
+        // Assert
+        // Total should be 7 (4 subscribed members + 3 single session guests)
+        Assert.Equal(7, result.Items.Count);
+
+        // Verify member without attendance is not included
+        Assert.DoesNotContain(result.Items, x => x.Id == memberNoAttendance.Id);
+
+        // Verify guest/single-session mapping
+        var guestsInResult = result.Items.Where(x => x.IsSingleSession).ToList();
+        Assert.Equal(3, guestsInResult.Count);
+
+        var anonymousGuest = guestsInResult.First(x => x.Id == "guest_session_1");
+        Assert.Equal("حصة منفردة", anonymousGuest.FullName);
+        Assert.Equal("حصة منفردة", anonymousGuest.ActivePlanName);
+        Assert.True(anonymousGuest.IsSingleSession);
+        Assert.True(anonymousGuest.IsGuest);
+        Assert.Null(anonymousGuest.PhotoUrl);
+
+        var namedGuest = guestsInResult.First(x => x.Id == "guest_session_2");
+        Assert.Equal("زائر اسم 2", namedGuest.FullName);
+        Assert.Equal("حصة منفردة", namedGuest.ActivePlanName);
+        Assert.True(namedGuest.IsSingleSession);
+        Assert.True(namedGuest.IsGuest);
+
+        // When query without filter or with active filter, guests must still be excluded
+        var activeOnlyResult = await handler.Handle(new GetMembersQuery(Filter: "active", PageSize: 20), CancellationToken.None);
+        Assert.All(activeOnlyResult.Items, x => Assert.False(x.IsGuest));
+    }
 }

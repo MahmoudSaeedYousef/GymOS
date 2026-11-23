@@ -98,8 +98,72 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
     }
   }
 
+  Future<void> _deletePhoto() async {
+    final colors = context.gymColors;
+    final l10n = context.l10n;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deletePhotoTitle),
+        content: Text(l10n.deletePhotoConfirmMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: colors.expired,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    setState(() => _isUploadingPhoto = true);
+    try {
+      await ref
+          .read(gymApiServiceProvider)
+          .deleteMemberPhoto(_currentMember.id);
+      if (!mounted) return;
+
+      setState(() {
+        _currentMember = _currentMember.copyWith(clearPhotoUrl: true);
+      });
+
+      ref.invalidate(membersProvider);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.deletePhotoSuccess),
+          backgroundColor: colors.active,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: colors.expired,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
+  }
+
   Future<void> _pickAndUploadPhoto() async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final l10n = context.l10n;
+    final hasPhoto =
+        _currentMember.photoUrl != null &&
+        _currentMember.photoUrl!.trim().isNotEmpty;
+
+    final action = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: context.gymColors.surfaceBackground,
       shape: const RoundedRectangleBorder(
@@ -113,21 +177,53 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.camera_alt_rounded),
-                title: const Text('الكاميرا', style: TextStyle(fontWeight: FontWeight.bold)),
-                onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+                title: Text(
+                  l10n.photoSourceCamera,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onTap: () => Navigator.of(ctx).pop('camera'),
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library_rounded),
-                title: const Text('المعرض', style: TextStyle(fontWeight: FontWeight.bold)),
-                onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+                title: Text(
+                  l10n.photoSourceGallery,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onTap: () => Navigator.of(ctx).pop('gallery'),
               ),
+              if (hasPhoto) ...[
+                const Divider(),
+                ListTile(
+                  leading: Icon(
+                    Icons.delete_outline_rounded,
+                    color: context.gymColors.expired,
+                  ),
+                  title: Text(
+                    l10n.removePhoto,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: context.gymColors.expired,
+                    ),
+                  ),
+                  onTap: () => Navigator.of(ctx).pop('delete'),
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
 
-    if (source == null) return;
+    if (action == null) return;
+
+    if (action == 'delete') {
+      await _deletePhoto();
+      return;
+    }
+
+    final source = action == 'camera'
+        ? ImageSource.camera
+        : ImageSource.gallery;
 
     try {
       final pickedFile = await _imagePicker.pickImage(
@@ -201,9 +297,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            e.toString().replaceAll('Exception: ', ''),
-          ),
+          content: Text(e.toString().replaceAll('Exception: ', '')),
           backgroundColor: context.gymColors.expired,
         ),
       );
@@ -215,7 +309,8 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.gymColors;
-    final isActive = _currentMember.subscriptionStatus.toLowerCase() == 'active';
+    final isActive =
+        _currentMember.subscriptionStatus.toLowerCase() == 'active';
     final statusColor = isActive ? colors.active : colors.expired;
     final isExpiringSoon = _currentMember.isExpiringSoon;
     final shouldShowReminder = !isActive || isExpiringSoon;
@@ -241,11 +336,32 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                 Stack(
                   alignment: Alignment.center,
                   children: [
-                    MemberAvatar(
-                      photoUrl: _currentMember.photoUrl,
-                      fullName: _currentMember.fullName,
-                      radius: 40,
-                      fontSize: 32,
+                    Container(
+                      padding: const EdgeInsets.all(0),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color:
+                              _currentMember.subscriptionStatus.toLowerCase() ==
+                                  MemberSubscriptionStatus.active.name
+                                      .toLowerCase()
+                              ? const Color.fromARGB(255, 9, 137, 75)
+                              : _currentMember.subscriptionStatus
+                                        .toLowerCase() ==
+                                    MemberSubscriptionStatus.expiringSoon.name
+                                        .toLowerCase()
+                              ? context.gymColors.warning
+                              : context.gymColors.expired,
+                          width: 3.2,
+                        ),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: MemberAvatar(
+                        photoUrl: _currentMember.photoUrl,
+                        fullName: _currentMember.fullName,
+                        gender: _currentMember.gender,
+                        radius: 40,
+                        fontSize: 32,
+                      ),
                     ),
                     if (_isUploadingPhoto)
                       Container(
@@ -258,7 +374,9 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                         child: const Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -392,46 +510,46 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
           if (shouldShowReminder) ...[
             const SizedBox(height: AppSpacing.md),
             SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton(
-                onPressed: () => WhatsAppHelper.sendRenewalReminder(
-                  context,
-                  phoneNumber: _currentMember.phoneNumber,
-                  memberName: _currentMember.fullName,
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(
-                    color: colors.active.withValues(alpha: 0.6),
-                    width: 1.5,
-                  ),
-                  backgroundColor: colors.active.withValues(alpha: 0.08),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AppSpacing.borderRadius,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Lottie.asset(
-                      'assets/animations/Whatsapp.json',
-                      width: 26,
-                      height: 26,
-                      repeat: false,
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton(
+                    onPressed: () => WhatsAppHelper.sendRenewalReminder(
+                      context,
+                      phoneNumber: _currentMember.phoneNumber,
+                      memberName: _currentMember.fullName,
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(
-                      context.l10n.sendWhatsappReminder,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: colors.active,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: colors.active.withValues(alpha: 0.6),
+                        width: 1.5,
+                      ),
+                      backgroundColor: colors.active.withValues(alpha: 0.08),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AppSpacing.borderRadius,
                       ),
                     ),
-                  ],
-                ),
-              ),
-            )
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Lottie.asset(
+                          'assets/animations/Whatsapp.json',
+                          width: 26,
+                          height: 26,
+                          repeat: false,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(
+                          context.l10n.sendWhatsappReminder,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: colors.active,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
                 .animate()
                 .fadeIn(duration: 350.ms)
                 .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),

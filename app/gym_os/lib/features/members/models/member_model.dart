@@ -13,7 +13,9 @@ class MemberModel {
   final String? subscriptionEndDate;
   final String subscriptionStatus;
   final bool isGuest;
+  final bool isSingleSession;
   final String? photoUrl;
+  final int gender;
 
   MemberModel({
     required this.id,
@@ -23,7 +25,9 @@ class MemberModel {
     this.subscriptionEndDate,
     required this.subscriptionStatus,
     this.isGuest = false,
+    this.isSingleSession = false,
     this.photoUrl,
+    this.gender = 0,
   });
 
   MemberSubscriptionStatus get status {
@@ -84,7 +88,13 @@ class MemberModel {
     subscriptionEndDate: json['subscriptionEndDate'],
     subscriptionStatus: json['subscriptionStatus'],
     isGuest: json['isGuest'] as bool? ?? json['is_guest'] as bool? ?? false,
+    isSingleSession: json['isSingleSession'] as bool? ??
+        json['is_single_session'] as bool? ??
+        (json['isGuest'] as bool? ?? json['is_guest'] as bool? ?? false),
     photoUrl: json['photoUrl'] as String? ?? json['photo_url'] as String?,
+    gender: (json['gender'] is int)
+        ? json['gender'] as int
+        : int.tryParse(json['gender']?.toString() ?? '') ?? 0,
   );
 
   MemberModel copyWith({
@@ -95,8 +105,10 @@ class MemberModel {
     String? subscriptionEndDate,
     String? subscriptionStatus,
     bool? isGuest,
+    bool? isSingleSession,
     String? photoUrl,
     bool clearPhotoUrl = false,
+    int? gender,
   }) {
     return MemberModel(
       id: id ?? this.id,
@@ -106,7 +118,9 @@ class MemberModel {
       subscriptionEndDate: subscriptionEndDate ?? this.subscriptionEndDate,
       subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
       isGuest: isGuest ?? this.isGuest,
+      isSingleSession: isSingleSession ?? this.isSingleSession,
       photoUrl: clearPhotoUrl ? null : (photoUrl ?? this.photoUrl),
+      gender: gender ?? this.gender,
     );
   }
 }

@@ -604,12 +604,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // 1. Avatar at START side, fixed size 40dp
-                MemberAvatar(
-                  photoUrl: member.photoUrl,
-                  fullName: member.fullName,
-                  radius: 20,
-                  fontSize: 16,
+                Container(
+                  padding: const EdgeInsets.all(0),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color:
+                          member.subscriptionStatus.toLowerCase() ==
+                              MemberSubscriptionStatus.active.name.toLowerCase()
+                          ? const Color.fromARGB(255, 9, 137, 75)
+                          : member.subscriptionStatus.toLowerCase() ==
+                                MemberSubscriptionStatus.expiringSoon.name
+                                    .toLowerCase()
+                          ? context.gymColors.warning
+                          : context.gymColors.expired,
+                      width: 1.2,
+                    ),
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: MemberAvatar(
+                    photoUrl: member.photoUrl,
+                    fullName: member.fullName,
+                    gender: member.gender,
+                    radius: 22,
+                    fontSize: 18,
+                  ),
                 ),
+                // MemberAvatar(
+                //   photoUrl: member.photoUrl,
+                //   fullName: member.fullName,
+                //   gender: member.gender,
+                //   radius: 20,
+                //   fontSize: 16,
+                // ),
                 const SizedBox(width: AppSpacing.sm),
 
                 // 2. Name & Phone & Subscription Badge UNDER name in one column
@@ -761,12 +787,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             ),
             child: Row(
               children: [
-                MemberAvatar(
-                  photoUrl: member.photoUrl,
-                  fullName: member.fullName,
-                  radius: 20,
-                  fontSize: 16,
+                Container(
+                  padding: const EdgeInsets.all(0),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color:
+                          member.subscriptionStatus.toLowerCase() ==
+                              MemberSubscriptionStatus.active.name.toLowerCase()
+                          ? const Color.fromARGB(255, 9, 137, 75)
+                          : member.subscriptionStatus.toLowerCase() ==
+                                MemberSubscriptionStatus.expiringSoon.name
+                                    .toLowerCase()
+                          ? context.gymColors.warning
+                          : context.gymColors.expired,
+                      width: 1.2,
+                    ),
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: MemberAvatar(
+                    photoUrl: member.photoUrl,
+                    fullName: member.fullName,
+                    gender: member.gender,
+                    radius: 22,
+                    fontSize: 18,
+                  ),
                 ),
+                // MemberAvatar(
+                //   photoUrl: member.photoUrl,
+                //   fullName: member.fullName,
+                //   gender: member.gender,
+                //   radius: 20,
+                //   fontSize: 16,
+                // ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(

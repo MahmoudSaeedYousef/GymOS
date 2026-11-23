@@ -360,5 +360,17 @@
   "discardChangesTitle": "تراجع عن التغييرات",
   "discardChangesMessage": "هل تريد تجاهل التغييرات الحالية؟ ستفقد البيانات التي قمت بإدخالها.",
   "discard": "تجاهل",
-  "keepEditing": "متابعة التعديل"
+  "keepEditing": "متابعة التعديل",
+  "gender": "النوع",
+  "genderMale": "ذكر",
+  "genderFemale": "أنثى",
+  "deletePhotoTitle": "حذف صورة المشترك",
+  "deletePhotoConfirmMessage": "هل أنت متأكد من حذف صورة المشترك؟",
+  "deletePhotoSuccess": "تم حذف الصورة بنجاح",
+  "removePhoto": "حذف الصورة",
+  "photoSourceCamera": "الكاميرا",
+  "photoSourceGallery": "المعرض",
+  "delete": "حذف",
+  "singleSession": "حصة منفردة",
+  "singleSessionToday": "حصة منفردة • اليوم"
 }

@@ -24,13 +24,15 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
   final _amountController = TextEditingController();
   String? _selectedPlanId;
   PaymentMethod _selectedPaymentMethod = PaymentMethod.cash;
+  int _selectedGender = 0; // 0 = unspecified, 1 = male, 2 = female
   bool _isSubmitting = false;
 
   bool get _isDirty {
     return _nameController.text.trim().isNotEmpty ||
         _phoneController.text.trim().isNotEmpty ||
         _amountController.text.trim().isNotEmpty ||
-        _selectedPlanId != null;
+        _selectedPlanId != null ||
+        _selectedGender != 0;
   }
 
   Future<bool> _confirmDiscardIfNeeded() async {
@@ -94,6 +96,7 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
             planId: _selectedPlanId,
             method: planChosen ? _selectedPaymentMethod.value : null,
             amountPaid: amount,
+            gender: _selectedGender,
           );
       ref.read(membersProvider.notifier).resetFilters();
       ref.invalidate(membersSummaryProvider);
@@ -239,6 +242,48 @@ class _AddMemberSheetState extends ConsumerState<AddMemberSheet> {
                           (v == null || v.trim().length < 10)
                               ? context.l10n.phoneInvalid
                               : null,
+                ),
+                const SizedBox(height: AppSpacing.md),
+
+                // Gender Selector (ذكر / أنثى)
+                Text(
+                  context.l10n.gender,
+                  style: TextStyle(
+                    color: textTheme.bodyLarge?.color,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                SegmentedButton<int>(
+                  segments: [
+                    ButtonSegment<int>(
+                      value: 1,
+                      label: Text(context.l10n.genderMale),
+                      icon: const Icon(Icons.male_rounded, size: 18),
+                    ),
+                    ButtonSegment<int>(
+                      value: 2,
+                      label: Text(context.l10n.genderFemale),
+                      icon: const Icon(Icons.female_rounded, size: 18),
+                    ),
+                  ],
+                  selected: _selectedGender == 0 ? <int>{} : <int>{_selectedGender},
+                  emptySelectionAllowed: true,
+                  onSelectionChanged: (Set<int> newSelection) {
+                    setState(() {
+                      _selectedGender = newSelection.isEmpty ? 0 : newSelection.first;
+                    });
+                  },
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
 

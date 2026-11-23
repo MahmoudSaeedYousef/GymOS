@@ -80,7 +80,9 @@ public class UpdateMemberCommandHandler(
             latestSub?.EndDate,
             subscriptionStatus,
             member.PhotoUrl,
-            member.Gender);
+            member.Gender,
+            IsGuest: member.IsGuest,
+            IsSingleSession: member.IsGuest);
 
         return UpdateMemberResult.Success(memberDto);
     }
