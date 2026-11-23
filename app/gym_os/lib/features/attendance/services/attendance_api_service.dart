@@ -91,6 +91,22 @@ class AttendanceApiService {
       final localRows =
           await _db.attendanceDao.watchCurrentlyCheckedIn().first;
       if (localRows.isNotEmpty) {
+        final memberIds = localRows
+            .map((a) => a.memberId)
+            .where((id) => id != null && id.isNotEmpty)
+            .cast<String>()
+            .toSet();
+
+        Map<String, String?> photoMap = {};
+        if (memberIds.isNotEmpty) {
+          final members = await (_db.select(_db.localMembers)
+                ..where((t) => t.id.isIn(memberIds)))
+              .get();
+          photoMap = {
+            for (final m in members) m.id: m.photoUrl,
+          };
+        }
+
         return localRows
             .map((a) => CurrentInsideMemberModel(
                   recordId: a.id,
@@ -98,6 +114,7 @@ class AttendanceApiService {
                   fullName: a.memberName,
                   phoneNumber: a.memberPhone ?? '',
                   checkInTime: a.checkInTime,
+                  photoUrl: a.memberId != null ? photoMap[a.memberId] : null,
                 ))
             .toList();
       }

@@ -4,6 +4,7 @@ using GymOS.Api.Middleware;
 using GymOS.Application.Features.Plans.Commands.CreatePlan;
 using GymOS.Application.Interfaces;
 using GymOS.Domain.Entities;
+using GymOS.Infrastructure.BackgroundJobs;
 using GymOS.Infrastructure.Data;
 using GymOS.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -24,6 +25,8 @@ builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ICacheService, InMemoryCacheService>();
 builder.Services.AddScoped<IGymHistorySeeder, GymHistorySeeder>();
+builder.Services.AddScoped<IAutoCheckOutService, AutoCheckOutService>();
+builder.Services.AddHostedService<AutoCheckOutBackgroundService>();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["Key"] ?? "GymOSSuperSecretKeyForJwtAuthenticationWhichMustBeAtLeast32Chars!";

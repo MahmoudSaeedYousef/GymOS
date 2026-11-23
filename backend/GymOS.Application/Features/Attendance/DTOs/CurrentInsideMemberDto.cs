@@ -5,5 +5,6 @@ public record CurrentInsideMemberDto(
     string MemberId,
     string FullName,
     string PhoneNumber,
-    DateTime CheckInTime
+    DateTime CheckInTime,
+    string? PhotoUrl = null
 );

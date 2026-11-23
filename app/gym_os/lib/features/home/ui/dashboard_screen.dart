@@ -397,7 +397,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   child: Text(
                     context.l10n.viewAll,
                     style: TextStyle(
-                      color: colors.brandPrimary,
+                      color: colors.accentText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -521,7 +521,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 title: context.l10n.expiredSubscriptions,
                 numericValue: stats.expiredSubscriptionsCount,
                 icon: Icons.exit_to_app_rounded,
-                accentColor: colors.expired,
+                accentColor: colors.textMuted,
                 onTap: () => context.push('/members?filter=expired'),
               ),
               _CompactStatCard(
@@ -870,7 +870,9 @@ class _DashboardHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: colors.brandPrimary.withValues(alpha: 0.45),
+                  color: isLight
+                      ? colors.brandPrimary.withValues(alpha: 0.2)
+                      : colors.textMuted,
                   width: 1.2,
                 ),
                 boxShadow: [
@@ -917,7 +919,7 @@ class _DashboardHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: colors.brandPrimary,
+                    color: colors.accentText,
                     letterSpacing: -0.3,
                   ),
                 ),

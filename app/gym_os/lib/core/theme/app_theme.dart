@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'app_spacing.dart';
 
@@ -7,6 +8,12 @@ class GymColorsExtension extends ThemeExtension<GymColorsExtension> {
   final Color brandPrimary;
   final Color surfaceBackground;
   final Color textHighlight;
+
+  /// Derived high-contrast accent color for text (WCAG >= 4.5:1).
+  final Color accentText;
+
+  /// Derived tinted light background (very light grey tinted ~4-6% toward accent).
+  final Color backgroundLight;
 
   // Semantic Status Colors (Desaturated)
   final Color active;
@@ -31,6 +38,8 @@ class GymColorsExtension extends ThemeExtension<GymColorsExtension> {
     required this.brandPrimary,
     required this.surfaceBackground,
     required this.textHighlight,
+    required this.accentText,
+    required this.backgroundLight,
     required this.active,
     required this.expired,
     required this.warning,
@@ -49,6 +58,8 @@ class GymColorsExtension extends ThemeExtension<GymColorsExtension> {
     Color? brandPrimary,
     Color? surfaceBackground,
     Color? textHighlight,
+    Color? accentText,
+    Color? backgroundLight,
     Color? active,
     Color? expired,
     Color? warning,
@@ -65,6 +76,8 @@ class GymColorsExtension extends ThemeExtension<GymColorsExtension> {
       brandPrimary: brandPrimary ?? this.brandPrimary,
       surfaceBackground: surfaceBackground ?? this.surfaceBackground,
       textHighlight: textHighlight ?? this.textHighlight,
+      accentText: accentText ?? this.accentText,
+      backgroundLight: backgroundLight ?? this.backgroundLight,
       active: active ?? this.active,
       expired: expired ?? this.expired,
       warning: warning ?? this.warning,
@@ -93,6 +106,8 @@ class GymColorsExtension extends ThemeExtension<GymColorsExtension> {
         t,
       )!,
       textHighlight: Color.lerp(textHighlight, other.textHighlight, t)!,
+      accentText: Color.lerp(accentText, other.accentText, t)!,
+      backgroundLight: Color.lerp(backgroundLight, other.backgroundLight, t)!,
       active: Color.lerp(active, other.active, t)!,
       expired: Color.lerp(expired, other.expired, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
@@ -124,12 +139,100 @@ class AppTheme {
 
   static const String defaultFontFamily = 'Azer';
 
+  // Cache for computed accentText per (accent, brightness) pair.
+  static final Map<String, Color> _accentTextCache = {};
+
+  /// Calculates contrast ratio between two colors according to WCAG 2.1.
+  static double calculateContrastRatio(Color foreground, Color background) {
+    final l1 = _relativeLuminance(foreground);
+    final l2 = _relativeLuminance(background);
+    final lighter = l1 > l2 ? l1 : l2;
+    final darker = l1 > l2 ? l2 : l1;
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  static double _relativeLuminance(Color c) {
+    double adjust(double val) {
+      if (val <= 0.04045) return val / 12.92;
+      return math.pow((val + 0.055) / 1.055, 2.4).toDouble();
+    }
+    return 0.2126 * adjust(c.r) + 0.7152 * adjust(c.g) + 0.0722 * adjust(c.b);
+  }
+
+  /// Computes a high-contrast accent color for text (WCAG >= 4.5:1).
+  ///
+  /// Converts the accent to HSL; in light mode lowers lightness step-by-step
+  /// until contrast against the light surface is >= 4.5:1.
+  /// In dark mode raises lightness against the dark surface to reach >= 4.5:1.
+  /// Preserves hue and saturation.
+  /// Caches the computed color per (accent, brightness) pair.
+  static Color computeAccentText({
+    required Color accent,
+    required Brightness brightness,
+    Color? surface,
+  }) {
+    final cacheKey = '${accent.toARGB32()}_${brightness.name}';
+    final cached = _accentTextCache[cacheKey];
+    if (cached != null) return cached;
+
+    final hsl = HSLColor.fromColor(accent);
+    final surfaceColor = surface ??
+        (brightness == Brightness.light
+            ? const Color(0xFFFFFFFF)
+            : const Color(0xFF131926));
+
+    Color resultColor;
+    if (brightness == Brightness.light) {
+      // In light mode: ensure contrast against surfaceColor AND tinted light bg (surfaceLevel0).
+      final bgLight = computeBackgroundLight(accent);
+      double lightness = hsl.lightness;
+      Color candidate = hsl.toColor();
+      while ((calculateContrastRatio(candidate, surfaceColor) < 4.5 ||
+              calculateContrastRatio(candidate, bgLight) < 4.5) &&
+          lightness > 0.0) {
+        lightness = math.max(0.0, lightness - 0.01);
+        candidate = hsl.withLightness(lightness).toColor();
+      }
+      resultColor = candidate;
+    } else {
+      double lightness = hsl.lightness;
+      Color candidate = hsl.toColor();
+      while (calculateContrastRatio(candidate, surfaceColor) < 4.5 &&
+          lightness < 1.0) {
+        lightness = math.min(1.0, lightness + 0.01);
+        candidate = hsl.withLightness(lightness).toColor();
+      }
+      // If still below 4.5 (e.g. very dark base), ensure contrast by stepping down if needed
+      if (calculateContrastRatio(candidate, surfaceColor) < 4.5) {
+        lightness = hsl.lightness;
+        while (calculateContrastRatio(candidate, surfaceColor) < 4.5 &&
+            lightness > 0.0) {
+          lightness = math.max(0.0, lightness - 0.01);
+          candidate = hsl.withLightness(lightness).toColor();
+        }
+      }
+      resultColor = candidate;
+    }
+
+    _accentTextCache[cacheKey] = resultColor;
+    return resultColor;
+  }
+
+  /// Computes a very light grey tinted slightly toward the accent hue
+  /// (~4-6% saturation, ~97-98% lightness) instead of pure white.
+  static Color computeBackgroundLight(Color accent) {
+    final hsl = HSLColor.fromColor(accent);
+    // Tint with hue from accent, 5% saturation, 97.5% lightness
+    return HSLColor.fromAHSL(1.0, hsl.hue, 0.05, 0.975).toColor();
+  }
+
   // ==========================================
   // 1. Light Theme
   // ==========================================
   static ThemeData lightTheme({Color? tenantPrimaryColor, String? fontFamily}) {
     final primary = tenantPrimaryColor ?? defaultPrimary;
-    const surfaceLevel0 = Color(0xFFF8FAFC);
+    final backgroundLight = computeBackgroundLight(primary);
+    final surfaceLevel0 = backgroundLight;
     const surfaceLevel1 = Color(0xFFFFFFFF);
     const surfaceLevel2 = Color(0xFFF1F5F9);
     const surfaceLevel3 = Color(0xFFE2E8F0);
@@ -137,6 +240,12 @@ class AppTheme {
     const textPrimary = Color(0xFF0F172A);
     const textSecondary = Color(0xFF475569);
     const textMuted = Color(0xFF94A3B8);
+
+    final accentTextColor = computeAccentText(
+      accent: primary,
+      brightness: Brightness.light,
+      surface: surfaceLevel1,
+    );
 
     final colorScheme = ColorScheme.fromSeed(
       seedColor: primary,
@@ -171,6 +280,11 @@ class AppTheme {
           fontFamily: fontFamily,
         ),
       ),
+      cardTheme: const CardThemeData(
+        color: surfaceLevel1,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surfaceLevel1,
@@ -196,6 +310,8 @@ class AppTheme {
           brandPrimary: primary,
           surfaceBackground: surfaceLevel1,
           textHighlight: defaultAccent,
+          accentText: accentTextColor,
+          backgroundLight: backgroundLight,
           active: const Color(0xFF16A34A),
           expired: const Color(0xFFDC2626),
           warning: const Color(0xFFD97706),
@@ -231,6 +347,14 @@ class AppTheme {
     const textPrimary = Color(0xFFF9FAFB);
     const textSecondary = Color(0xFF9CA3AF);
     const textMuted = Color(0xFF6B7280);
+
+    final accentTextColor = computeAccentText(
+      accent: primary,
+      brightness: Brightness.dark,
+      surface: surfaceLevel1,
+    );
+
+    final backgroundLight = computeBackgroundLight(primary);
 
     final colorScheme = ColorScheme.fromSeed(
       seedColor: primary,
@@ -290,6 +414,8 @@ class AppTheme {
           brandPrimary: primary,
           surfaceBackground: surfaceLevel1,
           textHighlight: defaultAccent,
+          accentText: accentTextColor,
+          backgroundLight: backgroundLight,
           active: const Color(0xFF34D399), // Emerald 400 (desaturated, clean)
           expired: const Color(0xFFF87171), // Red 400 (desaturated, clean)
           warning: const Color(0xFFFBBF24), // Amber 400 (desaturated, clean)

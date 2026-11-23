@@ -492,6 +492,11 @@ class SyncEngine {
         final endDateStr = map['subscriptionEndDate']?.toString();
         final isActive =
             map['subscriptionStatus']?.toString().toLowerCase() == 'active';
+        final hasPhoto =
+            map.containsKey('photoUrl') || map.containsKey('photo_url');
+        final rawPhoto = map['photoUrl'] ?? map['photo_url'];
+        final photoStr = rawPhoto?.toString();
+
         return LocalMembersCompanion.insert(
           id: map['id']?.toString() ?? '',
           fullName: map['fullName']?.toString() ?? '',
@@ -500,7 +505,9 @@ class SyncEngine {
           subscriptionEndDate: Value(
             endDateStr != null ? DateTime.tryParse(endDateStr) : null,
           ),
-          photoUrl: Value(map['photoUrl']?.toString() ?? map['photo_url']?.toString()),
+          photoUrl: hasPhoto && photoStr != null && photoStr.isNotEmpty
+              ? Value(photoStr)
+              : const Value.absent(),
           status: Value(isActive ? 1 : 0),
           updatedAt: DateTime.now(),
           isDirty: const Value(false),
