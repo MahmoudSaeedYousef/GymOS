@@ -32,6 +32,40 @@ class DailyAttendanceStat {
   };
 }
 
+/// Strongly typed model representing daily revenue amount in the dashboard.
+class DailyRevenueStat {
+  final DateTime date;
+  final double amount;
+
+  const DailyRevenueStat({required this.date, required this.amount});
+
+  factory DailyRevenueStat.fromJson(Map<String, dynamic> json) {
+    DateTime parsedDate = DateTime.now();
+    final rawDate = json['date'] ?? json['Date'];
+    if (rawDate != null) {
+      final parsed = DateTime.tryParse(rawDate.toString());
+      if (parsed != null) parsedDate = parsed.toLocal();
+    }
+
+    double parsedAmount = 0.0;
+    final rawAmount = json['amount'] ?? json['Amount'];
+    if (rawAmount is double) {
+      parsedAmount = rawAmount;
+    } else if (rawAmount is num) {
+      parsedAmount = rawAmount.toDouble();
+    } else if (rawAmount is String) {
+      parsedAmount = double.tryParse(rawAmount) ?? 0.0;
+    }
+
+    return DailyRevenueStat(date: parsedDate, amount: parsedAmount);
+  }
+
+  Map<String, dynamic> toJson() => {
+    'date': date.toIso8601String(),
+    'amount': amount,
+  };
+}
+
 /// Model representing gym-wide KPI statistics for the dashboard.
 class DashboardStatsModel {
   final int activeMembersCount;
@@ -42,6 +76,7 @@ class DashboardStatsModel {
   final double todayRevenue;
   final double monthlyDropInRevenue;
   final List<DailyAttendanceStat>? last7DaysAttendance;
+  final List<DailyRevenueStat>? last7DaysRevenue;
 
   const DashboardStatsModel({
     required this.activeMembersCount,
@@ -52,6 +87,7 @@ class DashboardStatsModel {
     this.todayRevenue = 0.0,
     this.monthlyDropInRevenue = 0.0,
     this.last7DaysAttendance,
+    this.last7DaysRevenue,
   });
 
   /// Alias for [todayCheckInsCount] to match backend naming
@@ -77,7 +113,7 @@ class DashboardStatsModel {
       return 0.0;
     }
 
-    List<DailyAttendanceStat>? parseLast7Days(dynamic value) {
+    List<DailyAttendanceStat>? parseLast7DaysAttendance(dynamic value) {
       if (value is List) {
         return value
             .map((item) {
@@ -92,8 +128,25 @@ class DashboardStatsModel {
       return null;
     }
 
-    final raw7Days =
+    List<DailyRevenueStat>? parseLast7DaysRevenue(dynamic value) {
+      if (value is List) {
+        return value
+            .map((item) {
+              if (item is Map<String, dynamic>) {
+                return DailyRevenueStat.fromJson(item);
+              }
+              return null;
+            })
+            .whereType<DailyRevenueStat>()
+            .toList();
+      }
+      return null;
+    }
+
+    final raw7DaysAttendance =
         json['last7DaysAttendance'] ?? json['Last7DaysAttendance'];
+    final raw7DaysRevenue =
+        json['last7DaysRevenue'] ?? json['Last7DaysRevenue'];
 
     return DashboardStatsModel(
       activeMembersCount: parseInt(
@@ -120,7 +173,8 @@ class DashboardStatsModel {
       monthlyDropInRevenue: parseDouble(
         json['monthlyDropInRevenue'] ?? json['MonthlyDropInRevenue'],
       ),
-      last7DaysAttendance: parseLast7Days(raw7Days),
+      last7DaysAttendance: parseLast7DaysAttendance(raw7DaysAttendance),
+      last7DaysRevenue: parseLast7DaysRevenue(raw7DaysRevenue),
     );
   }
 
@@ -135,6 +189,9 @@ class DashboardStatsModel {
     if (last7DaysAttendance != null)
       'last7DaysAttendance':
           last7DaysAttendance!.map((d) => d.toJson()).toList(),
+    if (last7DaysRevenue != null)
+      'last7DaysRevenue':
+          last7DaysRevenue!.map((d) => d.toJson()).toList(),
   };
 
   /// Formatted revenue string with K suffix for large amounts (e.g. 24K).

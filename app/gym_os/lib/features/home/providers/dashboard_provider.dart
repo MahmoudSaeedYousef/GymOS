@@ -56,9 +56,9 @@ final dashboardStatsStreamProvider =
 
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
-    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+    final tomorrow = todayStart.add(const Duration(days: 1));
     final monthStart = DateTime(now.year, now.month, 1);
-    final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59, 999);
+    final nextMonth = DateTime(now.year, now.month + 1, 1);
 
     if (cachedStats != null) {
       // 1. Base values from cached server stats
@@ -77,20 +77,20 @@ final dashboardStatsStreamProvider =
       final unsyncedTodayRevenue = unsyncedPayments
           .where((p) =>
               !p.createdAt.isBefore(todayStart) &&
-              !p.createdAt.isAfter(todayEnd))
+              p.createdAt.isBefore(tomorrow))
           .fold<double>(0.0, (sum, p) => sum + p.amountPaid);
 
       final unsyncedMonthRevenue = unsyncedPayments
           .where((p) =>
               !p.createdAt.isBefore(monthStart) &&
-              !p.createdAt.isAfter(monthEnd))
+              p.createdAt.isBefore(nextMonth))
           .fold<double>(0.0, (sum, p) => sum + p.amountPaid);
 
       final unsyncedMonthDropInRevenue = unsyncedPayments
           .where((p) =>
-              p.type == 2 &&
+              (p.type == 2 || p.type == 3) &&
               !p.createdAt.isBefore(monthStart) &&
-              !p.createdAt.isAfter(monthEnd))
+              p.createdAt.isBefore(nextMonth))
           .fold<double>(0.0, (sum, p) => sum + p.amountPaid);
 
       // 3. Unsynced attendance for today
@@ -100,7 +100,7 @@ final dashboardStatsStreamProvider =
       for (final a in attendanceList) {
         if (a.isDirty == false &&
             !a.checkInTime.isBefore(todayStart) &&
-            !a.checkInTime.isAfter(todayEnd)) {
+            a.checkInTime.isBefore(tomorrow)) {
           if (a.memberId != null && a.memberId!.isNotEmpty) {
             syncedTodayMemberIds.add(a.memberId!);
           }
@@ -112,7 +112,7 @@ final dashboardStatsStreamProvider =
       final unsyncedTodayAttendance = attendanceList.where((a) =>
           a.isDirty == true &&
           !a.checkInTime.isBefore(todayStart) &&
-          !a.checkInTime.isAfter(todayEnd));
+          a.checkInTime.isBefore(tomorrow));
 
       final unsyncedDistinctIds = <String>{};
       for (final a in unsyncedTodayAttendance) {
@@ -144,25 +144,50 @@ final dashboardStatsStreamProvider =
       final unsyncedInsideDelta = unsyncedInsideDistinctIds.length;
 
       // 5. Update last7DaysAttendance today bar
-      List<DailyAttendanceStat>? mergedLast7Days = cachedStats.last7DaysAttendance;
-      if (mergedLast7Days != null) {
-        mergedLast7Days = List<DailyAttendanceStat>.from(mergedLast7Days);
-        final todayIdx = mergedLast7Days.indexWhere((stat) =>
+      List<DailyAttendanceStat>? mergedLast7DaysAttendance = cachedStats.last7DaysAttendance;
+      if (mergedLast7DaysAttendance != null) {
+        mergedLast7DaysAttendance = List<DailyAttendanceStat>.from(mergedLast7DaysAttendance);
+        final todayIdx = mergedLast7DaysAttendance.indexWhere((stat) =>
             stat.date.year == now.year &&
             stat.date.month == now.month &&
             stat.date.day == now.day);
 
         if (todayIdx != -1) {
-          final existing = mergedLast7Days[todayIdx];
-          mergedLast7Days[todayIdx] = DailyAttendanceStat(
+          final existing = mergedLast7DaysAttendance[todayIdx];
+          mergedLast7DaysAttendance[todayIdx] = DailyAttendanceStat(
             date: existing.date,
             count: existing.count + unsyncedTodayAttendanceDelta,
           );
         } else if (unsyncedTodayAttendanceDelta > 0) {
-          mergedLast7Days.add(
+          mergedLast7DaysAttendance.add(
             DailyAttendanceStat(
               date: DateTime(now.year, now.month, now.day),
               count: baseTodayCheckIns + unsyncedTodayAttendanceDelta,
+            ),
+          );
+        }
+      }
+
+      // 6. Update last7DaysRevenue today bar with unsynced local payments
+      List<DailyRevenueStat>? mergedLast7DaysRevenue = cachedStats.last7DaysRevenue;
+      if (mergedLast7DaysRevenue != null) {
+        mergedLast7DaysRevenue = List<DailyRevenueStat>.from(mergedLast7DaysRevenue);
+        final todayIdx = mergedLast7DaysRevenue.indexWhere((stat) =>
+            stat.date.year == now.year &&
+            stat.date.month == now.month &&
+            stat.date.day == now.day);
+
+        if (todayIdx != -1) {
+          final existing = mergedLast7DaysRevenue[todayIdx];
+          mergedLast7DaysRevenue[todayIdx] = DailyRevenueStat(
+            date: existing.date,
+            amount: existing.amount + unsyncedTodayRevenue,
+          );
+        } else if (unsyncedTodayRevenue > 0) {
+          mergedLast7DaysRevenue.add(
+            DailyRevenueStat(
+              date: DateTime(now.year, now.month, now.day),
+              amount: baseTodayRevenue + unsyncedTodayRevenue,
             ),
           );
         }
@@ -178,7 +203,8 @@ final dashboardStatsStreamProvider =
           todayRevenue: baseTodayRevenue + unsyncedTodayRevenue,
           monthlyDropInRevenue:
               baseMonthlyDropInRevenue + unsyncedMonthDropInRevenue,
-          last7DaysAttendance: mergedLast7Days,
+          last7DaysAttendance: mergedLast7DaysAttendance,
+          last7DaysRevenue: mergedLast7DaysRevenue,
         ),
       );
     } else {
@@ -192,7 +218,7 @@ final dashboardStatsStreamProvider =
 
       final todayAtt = attendanceList.where((a) =>
           !a.checkInTime.isBefore(todayStart) &&
-          !a.checkInTime.isAfter(todayEnd));
+          a.checkInTime.isBefore(tomorrow));
 
       final distinctMemberIds = <String>{};
       for (final a in todayAtt) {
@@ -206,21 +232,21 @@ final dashboardStatsStreamProvider =
           attendanceList.where((a) => a.checkOutTime == null).length;
 
       final monthPays = paymentsList.where((p) =>
-          !p.createdAt.isBefore(monthStart) && !p.createdAt.isAfter(monthEnd));
+          !p.createdAt.isBefore(monthStart) && p.createdAt.isBefore(nextMonth));
       final monthlyRevenue = monthPays.fold<double>(
         0.0,
         (sum, p) => sum + p.amountPaid,
       );
 
       final todayPays = paymentsList.where((p) =>
-          !p.createdAt.isBefore(todayStart) && !p.createdAt.isAfter(todayEnd));
+          !p.createdAt.isBefore(todayStart) && p.createdAt.isBefore(tomorrow));
       final todayRevenue = todayPays.fold<double>(
         0.0,
         (sum, p) => sum + p.amountPaid,
       );
 
       final monthlyDropInRevenue = monthPays
-          .where((p) => p.type == 2)
+          .where((p) => p.type == 2 || p.type == 3)
           .fold<double>(0.0, (sum, p) => sum + p.amountPaid);
 
       controller.add(

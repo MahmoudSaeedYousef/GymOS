@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gym_os/core/theme/app_spacing.dart';
 import 'package:gym_os/core/theme/app_theme.dart';
+import 'package:gym_os/core/ui/gym_ambient_background.dart';
 
 /// A theme-aware card component with neutral tone-based elevation (no heavy shadows or neon glows).
 class GymCard extends StatelessWidget {
@@ -30,40 +31,56 @@ class GymCard extends StatelessWidget {
     final radius = borderRadius ?? AppSpacing.borderRadiusMd;
 
     // In Light Mode, cards default to pure white surfaceLevel1 (#FFFFFF).
-    final resolvedBg = backgroundColor ??
-        (!isDark
-            ? colors.surfaceLevel1
-            : (elevationLevel == 2
-                ? colors.surfaceLevel2
-                : (elevationLevel == 3
-                    ? colors.surfaceLevel3
-                    : colors.surfaceLevel1)));
+    // In Dark Mode, cards default to surfaceLevel1 (#141923).
+    final resolvedBg = backgroundColor ?? colors.surfaceLevel1;
 
     final effectiveBorder = border ?? Border.all(color: colors.surfaceBorder);
+
+    Widget content = onTap != null
+        ? InkWell(
+            onTap: onTap,
+            borderRadius: radius,
+            child: Padding(
+              padding: padding ?? AppSpacing.cardPadding,
+              child: child,
+            ),
+          )
+        : Padding(
+            padding: padding ?? AppSpacing.cardPadding,
+            child: child,
+          );
 
     final cardBody = Material(
       color: resolvedBg,
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: radius,
-          border: effectiveBorder,
-        ),
-        child: onTap != null
-            ? InkWell(
-                onTap: onTap,
-                borderRadius: radius,
-                child: Padding(
-                  padding: padding ?? AppSpacing.cardPadding,
-                  child: child,
+      child: isDark
+          ? Stack(
+              fit: StackFit.passthrough,
+              children: [
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: GymMicroDotPainter(spacing: 24.0, radius: 0.8),
+                    ),
+                  ),
                 ),
-              )
-            : Padding(
-                padding: padding ?? AppSpacing.cardPadding,
-                child: child,
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: radius,
+                    border: effectiveBorder,
+                  ),
+                  child: content,
+                ),
+              ],
+            )
+          : Container(
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                border: effectiveBorder,
               ),
-      ),
+              child: content,
+            ),
     );
 
     if (!isDark) {

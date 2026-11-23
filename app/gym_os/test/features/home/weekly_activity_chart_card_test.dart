@@ -254,6 +254,86 @@ void main() {
       await attendanceController.close();
       await paymentsController.close();
     });
+
+    test('aggregateWeeklyStats includes single-session / guest payments with strict [today, tomorrow) boundaries', () async {
+      final attendanceController = StreamController<List<LocalAttendanceData>>();
+      final paymentsController = StreamController<List<LocalPayment>>();
+
+      final stream = aggregateWeeklyStats(
+        attendanceStream: attendanceController.stream,
+        paymentsStream: paymentsController.stream,
+        now: fixedRefDate,
+      );
+
+      final paymentsData = [
+        // Today standard payment (1000 EGP)
+        LocalPayment(
+          id: 'p1',
+          memberId: 'm1',
+          memberName: 'Member 1',
+          planId: 'plan1',
+          amountPaid: 1000.0,
+          method: 1,
+          type: 1, // Standard
+          createdAt: DateTime(2026, 11, 20, 10, 0),
+          isDirty: false,
+        ),
+        // Today guest/single-session payment (100 EGP)
+        LocalPayment(
+          id: 'p2',
+          memberId: null,
+          memberName: 'Guest 1',
+          planId: null,
+          amountPaid: 100.0,
+          method: 3,
+          type: 3, // Drop-in / guest
+          createdAt: DateTime(2026, 11, 20, 14, 0),
+          isDirty: false,
+        ),
+        // Today guest near midnight boundary at 23:59:59 (35 EGP)
+        LocalPayment(
+          id: 'p3',
+          memberId: null,
+          memberName: 'Guest 2',
+          planId: null,
+          amountPaid: 35.0,
+          method: 4,
+          type: 3, // Drop-in / guest
+          createdAt: DateTime(2026, 11, 20, 23, 59, 59),
+          isDirty: false,
+        ),
+        // Tomorrow at 00:00:00 (outside today's [targetDay, nextDay) boundary)
+        LocalPayment(
+          id: 'p4',
+          memberId: 'm3',
+          memberName: 'Member 3',
+          planId: 'plan1',
+          amountPaid: 500.0,
+          method: 1,
+          type: 1,
+          createdAt: DateTime(2026, 11, 21, 0, 0, 0),
+          isDirty: false,
+        ),
+      ];
+
+      final expectation = expectLater(
+        stream,
+        emits((List<DailyStatPoint> points) {
+          // Today's point: 1000 + 100 + 35 = 1135
+          final todayPoint = points.last;
+          expect(todayPoint.date.day, 20);
+          expect(todayPoint.revenueAmount, 1135.0);
+          return true;
+        }),
+      );
+
+      attendanceController.add([]);
+      paymentsController.add(paymentsData);
+
+      await expectation;
+      await attendanceController.close();
+      await paymentsController.close();
+    });
   });
 
   group('WeeklyActivityChartCard Widget Tests', () {

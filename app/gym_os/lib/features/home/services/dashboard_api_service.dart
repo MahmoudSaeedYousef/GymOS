@@ -94,23 +94,24 @@ class DashboardApiService {
         final mergedTodayCount =
             serverStats.todayCheckInsCount + addedUnsyncedCount;
 
-        List<DailyAttendanceStat>? mergedLast7Days =
+        List<DailyAttendanceStat>? mergedLast7DaysAttendance =
             serverStats.last7DaysAttendance;
-        if (mergedLast7Days != null && addedUnsyncedCount > 0) {
-          mergedLast7Days = List<DailyAttendanceStat>.from(mergedLast7Days);
-          final todayIdx = mergedLast7Days.indexWhere((stat) =>
+        if (mergedLast7DaysAttendance != null && addedUnsyncedCount > 0) {
+          mergedLast7DaysAttendance =
+              List<DailyAttendanceStat>.from(mergedLast7DaysAttendance);
+          final todayIdx = mergedLast7DaysAttendance.indexWhere((stat) =>
               stat.date.year == now.year &&
               stat.date.month == now.month &&
               stat.date.day == now.day);
 
           if (todayIdx != -1) {
-            final existing = mergedLast7Days[todayIdx];
-            mergedLast7Days[todayIdx] = DailyAttendanceStat(
+            final existing = mergedLast7DaysAttendance[todayIdx];
+            mergedLast7DaysAttendance[todayIdx] = DailyAttendanceStat(
               date: existing.date,
               count: existing.count + addedUnsyncedCount,
             );
           } else {
-            mergedLast7Days.add(
+            mergedLast7DaysAttendance.add(
               DailyAttendanceStat(
                 date: DateTime(now.year, now.month, now.day),
                 count: mergedTodayCount,
@@ -118,6 +119,9 @@ class DashboardApiService {
             );
           }
         }
+
+        List<DailyRevenueStat>? mergedLast7DaysRevenue =
+            serverStats.last7DaysRevenue;
 
         return DashboardStatsModel(
           activeMembersCount: serverStats.activeMembersCount,
@@ -127,7 +131,8 @@ class DashboardApiService {
           currentInside: serverStats.currentInside,
           todayRevenue: serverStats.todayRevenue,
           monthlyDropInRevenue: serverStats.monthlyDropInRevenue,
-          last7DaysAttendance: mergedLast7Days,
+          last7DaysAttendance: mergedLast7DaysAttendance,
+          last7DaysRevenue: mergedLast7DaysRevenue,
         );
       }
       return serverStats;
@@ -137,19 +142,19 @@ class DashboardApiService {
     if (_db != null) {
       final now = DateTime.now();
       final todayStart = DateTime(now.year, now.month, now.day);
-      final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+      final tomorrow = todayStart.add(const Duration(days: 1));
       final monthStart = DateTime(now.year, now.month, 1);
-      final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59, 999);
+      final nextMonth = DateTime(now.year, now.month + 1, 1);
 
       final allMembers = await (_db.select(_db.localMembers)).get();
       final activeCount = allMembers.where((m) => m.status == 1).length;
       final expiredCount = allMembers.where((m) => m.status != 1).length;
 
-      // Local check-ins for today
+      // Local check-ins for today: strict [todayStart, tomorrow)
       final todayAttendance = await (_db.select(_db.localAttendance)
             ..where((t) =>
                 t.checkInTime.isBiggerOrEqualValue(todayStart) &
-                t.checkInTime.isSmallerOrEqualValue(todayEnd)))
+                t.checkInTime.isSmallerThanValue(tomorrow)))
           .get();
 
       final localTodayDistinct = <String>{};
@@ -169,24 +174,25 @@ class DashboardApiService {
       final monthPayments = await (_db.select(_db.localPayments)
             ..where((t) =>
                 t.createdAt.isBiggerOrEqualValue(monthStart) &
-                t.createdAt.isSmallerOrEqualValue(monthEnd)))
+                t.createdAt.isSmallerThanValue(nextMonth)))
           .get();
       final monthlyRevenue = monthPayments.fold<double>(
         0.0,
         (sum, p) => sum + p.amountPaid,
       );
 
+      // Strict [todayStart, tomorrow) boundary including single-session / guest payments
       final todayPayments = await (_db.select(_db.localPayments)
             ..where((t) =>
                 t.createdAt.isBiggerOrEqualValue(todayStart) &
-                t.createdAt.isSmallerOrEqualValue(todayEnd)))
+                t.createdAt.isSmallerThanValue(tomorrow)))
           .get();
       final todayRevenue = todayPayments.fold<double>(
         0.0,
         (sum, p) => sum + p.amountPaid,
       );
 
-      final monthDropIns = monthPayments.where((p) => p.type == 2);
+      final monthDropIns = monthPayments.where((p) => p.type == 2 || p.type == 3);
       final monthlyDropInRevenue = monthDropIns.fold<double>(
         0.0,
         (sum, p) => sum + p.amountPaid,

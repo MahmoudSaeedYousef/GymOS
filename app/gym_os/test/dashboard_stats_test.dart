@@ -122,6 +122,39 @@ void main() {
       expect(stats.last7DaysAttendance!.first.count, 4);
       expect(stats.last7DaysAttendance!.last.count, 5);
     });
+
+    test('parses last7DaysRevenue correctly and serializes to JSON', () {
+      final json = {
+        'activeMembersCount': 12,
+        'expiredSubscriptionsCount': 1,
+        'todayAttendanceCount': 3,
+        'monthlyRevenue': 5000.0,
+        'currentInside': 4,
+        'todayRevenue': 1135.0,
+        'monthlyDropInRevenue': 135.0,
+        'last7DaysRevenue': [
+          {'date': '2026-11-15T00:00:00.000', 'amount': 200.0},
+          {'date': '2026-11-16T00:00:00.000', 'amount': 450.0},
+          {'date': '2026-11-17T00:00:00.000', 'amount': 300.0},
+          {'date': '2026-11-18T00:00:00.000', 'amount': 0.0},
+          {'date': '2026-11-19T00:00:00.000', 'amount': 1500.0},
+          {'date': '2026-11-20T00:00:00.000', 'amount': 800.0},
+          {'date': '2026-11-21T00:00:00.000', 'amount': 1135.0},
+        ],
+      };
+
+      final stats = DashboardStatsModel.fromJson(json);
+
+      expect(stats.todayRevenue, 1135.0);
+      expect(stats.last7DaysRevenue, isNotNull);
+      expect(stats.last7DaysRevenue!.length, 7);
+      expect(stats.last7DaysRevenue!.first.amount, 200.0);
+      expect(stats.last7DaysRevenue!.last.amount, 1135.0);
+
+      final encoded = stats.toJson();
+      expect(encoded['last7DaysRevenue'], isNotNull);
+      expect((encoded['last7DaysRevenue'] as List).length, 7);
+    });
   });
 
   group('Reactive DashboardStats Drift & Deduplication Tests', () {

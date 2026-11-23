@@ -139,9 +139,11 @@ Stream<List<DailyStatPoint>> aggregateWeeklyStats({
       );
 
       return days.map((d) {
+        final nextDay = d.add(const Duration(days: 1));
+
         final dayRecords = attendanceList.where((a) {
           final t = a.checkInTime;
-          return t.year == d.year && t.month == d.month && t.day == d.day;
+          return !t.isBefore(d) && t.isBefore(nextDay);
         });
 
         // Deduplicate distinct members per day (matching Today's Attendance distinct logic)
@@ -152,9 +154,10 @@ Stream<List<DailyStatPoint>> aggregateWeeklyStats({
         }
         final count = distinctMemberIds.length;
 
+        // Strict [targetDay, nextDay) boundary including single-session/guest and member payments
         final rev = paymentsList.where((p) {
           final t = p.createdAt;
-          return t.year == d.year && t.month == d.month && t.day == d.day;
+          return !t.isBefore(d) && t.isBefore(nextDay);
         }).fold<double>(0.0, (sum, p) => sum + p.amountPaid);
 
         return DailyStatPoint(
@@ -194,27 +197,59 @@ final weeklyStatsProvider =
 
   return localWeeklyStream.map((localPoints) {
     final serverStats = dashboardStatsAsync.value;
-    final server7Days = serverStats?.last7DaysAttendance;
+    final server7DaysAttendance = serverStats?.last7DaysAttendance;
+    final server7DaysRevenue = serverStats?.last7DaysRevenue;
 
-    if (server7Days == null || server7Days.isEmpty) {
+    final hasServerAttendance =
+        server7DaysAttendance != null && server7DaysAttendance.isNotEmpty;
+    final hasServerRevenue =
+        server7DaysRevenue != null && server7DaysRevenue.isNotEmpty;
+
+    if (!hasServerAttendance && !hasServerRevenue) {
       return localPoints;
     }
 
-    // Merge server last 7 days breakdown with local points (keeping payments/revenue from local)
+    // Merge server last 7 days breakdown (attendance and revenue) when available
     return localPoints.map((lp) {
-      final matchingServerStat = server7Days.cast<DailyAttendanceStat?>().firstWhere(
-            (s) =>
-                s != null &&
-                s.date.year == lp.date.year &&
-                s.date.month == lp.date.month &&
-                s.date.day == lp.date.day,
-            orElse: () => null,
-          );
+      int attendance = lp.attendanceCount;
+      double revenue = lp.revenueAmount;
 
-      if (matchingServerStat != null) {
-        return lp.copyWith(attendanceCount: matchingServerStat.count);
+      if (hasServerAttendance) {
+        final matchingAttendance = server7DaysAttendance
+            .cast<DailyAttendanceStat?>()
+            .firstWhere(
+              (s) =>
+                  s != null &&
+                  s.date.year == lp.date.year &&
+                  s.date.month == lp.date.month &&
+                  s.date.day == lp.date.day,
+              orElse: () => null,
+            );
+        if (matchingAttendance != null) {
+          attendance = matchingAttendance.count;
+        }
       }
-      return lp;
+
+      if (hasServerRevenue) {
+        final matchingRevenue = server7DaysRevenue
+            .cast<DailyRevenueStat?>()
+            .firstWhere(
+              (s) =>
+                  s != null &&
+                  s.date.year == lp.date.year &&
+                  s.date.month == lp.date.month &&
+                  s.date.day == lp.date.day,
+              orElse: () => null,
+            );
+        if (matchingRevenue != null) {
+          revenue = matchingRevenue.amount;
+        }
+      }
+
+      return lp.copyWith(
+        attendanceCount: attendance,
+        revenueAmount: revenue,
+      );
     }).toList();
   });
 });
