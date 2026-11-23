@@ -32,13 +32,16 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'gym_os_local'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.addColumn(localMembers, localMembers.photoUrl);
+          }
+          if (from < 3) {
+            await m.addColumn(localMembers, localMembers.gender);
           }
         },
       );

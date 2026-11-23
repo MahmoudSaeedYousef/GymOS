@@ -16,7 +16,13 @@ public class GetMembersQueryHandler(IGymDbContext context)
         var today = now.Date;
         var sortBy = (request.SortBy ?? "newest").ToLower();
 
-        var query = context.Users.AsNoTracking().Where(c=>!c.IsGuest);
+        var isTodayFilter = string.Equals(request.Filter, "today", StringComparison.OrdinalIgnoreCase);
+
+        var query = context.Users.AsNoTracking();
+        if (!isTodayFilter)
+        {
+            query = query.Where(c => !c.IsGuest);
+        }
 
         // 1. الفلترة
         var fiveDaysFromToday = today.AddDays(5);
@@ -49,6 +55,7 @@ public class GetMembersQueryHandler(IGymDbContext context)
             u.SubscriptionEndDate,
             u.PhotoUrl,
             u.Gender,
+            u.IsGuest,
             LatestSub = context.Subscriptions
                 .Where(s => s.MemberId == u.Id)
                 .OrderByDescending(s => s.EndDate)
@@ -175,15 +182,31 @@ public class GetMembersQueryHandler(IGymDbContext context)
         var pageUsers = rawUsers.Take(pageSize).ToList();
 
         var items = pageUsers
-            .Select(u => new MemberDto(
-                u.Id,
-                u.FullName,
-                u.PhoneNumber ?? "",
-                u.LatestSub?.PlanName,
-                u.LatestSub?.EndDate,
-                (u.LatestSub == null || u.SubscriptionEndDate == null || u.SubscriptionEndDate < now) ? "Expired" : "Active",
-                u.PhotoUrl,
-                u.Gender))
+            .Select(u =>
+            {
+                var isSingleSession = u.IsGuest;
+                var displayName = isSingleSession && (string.IsNullOrWhiteSpace(u.FullName) || u.FullName == "زائر حصة مفردة")
+                    ? "حصة منفردة"
+                    : u.FullName;
+                var planName = isSingleSession
+                    ? (u.LatestSub?.PlanName ?? "حصة منفردة")
+                    : u.LatestSub?.PlanName;
+                var status = isSingleSession
+                    ? "Expired"
+                    : ((u.LatestSub == null || u.SubscriptionEndDate == null || u.SubscriptionEndDate < now) ? "Expired" : "Active");
+
+                return new MemberDto(
+                    u.Id,
+                    displayName,
+                    u.PhoneNumber ?? "",
+                    planName,
+                    u.LatestSub?.EndDate,
+                    status,
+                    isSingleSession ? null : u.PhotoUrl,
+                    u.Gender,
+                    IsGuest: u.IsGuest,
+                    IsSingleSession: isSingleSession);
+            })
             .ToList();
 
         // بناء الـ NextCursor للصفحة الجاية

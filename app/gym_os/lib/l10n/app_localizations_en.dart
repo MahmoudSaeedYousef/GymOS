@@ -685,4 +685,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get keepEditing => 'Keep Editing';
+
+  @override
+  String get gender => 'Gender';
+
+  @override
+  String get genderMale => 'Male';
+
+  @override
+  String get genderFemale => 'Female';
+
+  @override
+  String get deletePhotoTitle => 'Remove Member Photo';
+
+  @override
+  String get deletePhotoConfirmMessage =>
+      'Are you sure you want to remove this member\'s photo?';
+
+  @override
+  String get deletePhotoSuccess => 'Photo removed successfully';
+
+  @override
+  String get removePhoto => 'Remove Photo';
+
+  @override
+  String get photoSourceCamera => 'Camera';
+
+  @override
+  String get photoSourceGallery => 'Gallery';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get singleSession => 'Single Session';
+
+  @override
+  String get singleSessionToday => 'Single Session • Today';
 }

@@ -86,6 +86,37 @@ class GymApiService {
       return PagedMembersResponse.fromJson(res.data);
     } catch (e) {
       if (_db != null) {
+        if (filter == 'today') {
+          final now = DateTime.now();
+          final todayStart = DateTime(now.year, now.month, now.day);
+          final todayEnd = todayStart.add(const Duration(days: 1));
+          final todayMembers = await _db.membersDao.getTodayAttendanceMembers(
+            todayStart: todayStart,
+            todayEnd: todayEnd,
+          );
+          final items = todayMembers.map((m) {
+            final isSingleSession = m.isGuest || m.planName == 'حصة منفردة';
+            return MemberModel(
+              id: m.id,
+              fullName: m.fullName,
+              phoneNumber: m.phone,
+              activePlanName: isSingleSession ? 'حصة منفردة' : m.planName,
+              subscriptionEndDate: m.subscriptionEndDate?.toIso8601String(),
+              subscriptionStatus: m.status == 1 ? 'active' : 'expired',
+              isGuest: m.isGuest,
+              isSingleSession: isSingleSession,
+              photoUrl: m.photoUrl,
+              gender: m.gender,
+            );
+          }).toList();
+
+          return PagedMembersResponse(
+            items: items,
+            hasMore: false,
+            nextCursor: null,
+          );
+        }
+
         final localMembers = await _db.membersDao.watchAllMembers().first;
         var filtered = localMembers.where((m) => !m.isGuest);
         if (filter == 'active') {
@@ -203,6 +234,7 @@ class GymApiService {
     String? planId,
     int? method,
     double? amountPaid,
+    int gender = 0,
   }) async {
     if (_db != null) {
       final memberId = UuidGenerator.v4();
@@ -242,6 +274,7 @@ class GymApiService {
           planName: Value(plan?.name),
           subscriptionStartDate: Value(plan != null ? now : null),
           subscriptionEndDate: Value(endDate),
+          gender: Value(gender),
           status: Value(plan != null ? 1 : 0),
           updatedAt: now,
           isDirty: const Value(true),
@@ -258,6 +291,7 @@ class GymApiService {
             'planId': planId,
             'method': method,
             'amountPaid': amountPaid,
+            'gender': gender,
             'occurredAtUtc': now.toUtc().toIso8601String(),
           }),
           createdAt: now,
@@ -277,6 +311,7 @@ class GymApiService {
         'planId': ?planId,
         'method': ?method,
         'amountPaid': ?amountPaid,
+        'gender': gender,
       },
     );
   }
@@ -286,13 +321,19 @@ class GymApiService {
     String id, {
     required String fullName,
     required String phoneNumber,
+    int? gender,
   }) async {
+    final payload = <String, dynamic>{
+      'fullName': fullName,
+      'phoneNumber': phoneNumber,
+    };
+    if (gender != null) {
+      payload['gender'] = gender;
+    }
+
     final res = await _dio.put(
       '/api/members/$id',
-      data: {
-        'fullName': fullName,
-        'phoneNumber': phoneNumber,
-      },
+      data: payload,
     );
 
     final updated = MemberModel.fromJson(res.data as Map<String, dynamic>);
@@ -303,12 +344,38 @@ class GymApiService {
           fullName: Value(fullName),
           phone: Value(phoneNumber),
           photoUrl: Value(updated.photoUrl),
+          gender: gender != null ? Value(gender) : (updated.gender != 0 ? Value(updated.gender) : const Value.absent()),
           updatedAt: Value(DateTime.now()),
         ),
       );
     }
 
     return updated;
+  }
+
+  /// Deletes a member's photo avatar and clears it locally in Drift.
+  Future<void> deleteMemberPhoto(String id) async {
+    // 1. Immediately clear photoUrl locally in Drift so UI updates with 0 latency
+    if (_db != null) {
+      await (_db.update(_db.localMembers)..where((t) => t.id.equals(id))).write(
+        LocalMembersCompanion(
+          photoUrl: const Value(null),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+
+    // 2. Call backend delete-photo endpoint
+    try {
+      await _dio.delete('/api/members/$id/photo');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        // Fallback to /api/gym/members/$id/photo if needed
+        try {
+          await _dio.delete('/api/gym/members/$id/photo');
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   /// Uploads a member's photo avatar using multipart/form-data.

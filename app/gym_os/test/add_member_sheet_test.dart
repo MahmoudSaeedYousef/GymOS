@@ -18,6 +18,7 @@ class _FakeGymApiService extends GymApiService {
   String? lastCreatedPlanId;
   int? lastCreatedMethod;
   double? lastCreatedAmountPaid;
+  int? lastCreatedGender;
 
   _FakeGymApiService({required this.plans}) : super(Dio());
 
@@ -31,12 +32,14 @@ class _FakeGymApiService extends GymApiService {
     String? planId,
     int? method,
     double? amountPaid,
+    int gender = 0,
   }) async {
     lastCreatedFullName = fullName;
     lastCreatedPhone = phoneNumber;
     lastCreatedPlanId = planId;
     lastCreatedMethod = method;
     lastCreatedAmountPaid = amountPaid;
+    lastCreatedGender = gender;
   }
 
   @override

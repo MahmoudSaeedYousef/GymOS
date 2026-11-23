@@ -13,15 +13,18 @@ String? resolveMemberPhotoUrl(String? photoUrl, String? baseUrl) {
     return trimmed;
   }
   if (baseUrl == null || baseUrl.isEmpty) return trimmed;
-  final normalizedBase = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+  final normalizedBase = baseUrl.endsWith('/')
+      ? baseUrl.substring(0, baseUrl.length - 1)
+      : baseUrl;
   final normalizedPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
   return '$normalizedBase$normalizedPath';
 }
 
-/// A circular member avatar displaying network image with robust fallback to initial-letter avatar.
+/// A circular member avatar displaying network image with robust fallback to gender avatar or initial-letter avatar.
 class MemberAvatar extends ConsumerWidget {
   final String? photoUrl;
   final String fullName;
+  final int gender;
   final double radius;
   final double? fontSize;
   final BorderRadius? borderRadius;
@@ -32,6 +35,7 @@ class MemberAvatar extends ConsumerWidget {
     super.key,
     required this.photoUrl,
     required this.fullName,
+    this.gender = 0,
     this.radius = 22,
     this.fontSize,
     this.borderRadius,
@@ -51,16 +55,78 @@ class MemberAvatar extends ConsumerWidget {
     final bgColor = backgroundColor ?? colorScheme.primaryContainer;
     final fgColor = foregroundColor ?? colorScheme.primary;
     final effectiveFontSize = fontSize ?? (radius * 0.8);
-    final diameter = radius * 2;
+    final diameter = radius * 2.5;
 
     Widget buildFallback() {
+      if (gender == 1) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(radius * 2.5),
+          child: Image.asset(
+            'assets/images/avatar_male.jpg',
+            width: diameter,
+            height: diameter,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              width: diameter,
+              height: diameter,
+              decoration: BoxDecoration(
+                color: bgColor,
+                shape: borderRadius != null
+                    ? BoxShape.rectangle
+                    : BoxShape.circle,
+                borderRadius: borderRadius,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                initialLetter,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: effectiveFontSize,
+                  color: fgColor,
+                ),
+              ),
+            ),
+          ),
+        );
+      } else if (gender == 2) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(radius * 2.5),
+          child: Image.asset(
+            'assets/images/avatar_female.jpg',
+            width: diameter,
+            height: diameter,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              width: diameter,
+              height: diameter,
+              decoration: BoxDecoration(
+                color: bgColor,
+                shape: borderRadius != null
+                    ? BoxShape.rectangle
+                    : BoxShape.circle,
+                borderRadius: borderRadius,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                initialLetter,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: effectiveFontSize,
+                  color: fgColor,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
       return Container(
         width: diameter,
         height: diameter,
         decoration: BoxDecoration(
           color: bgColor,
           shape: borderRadius != null ? BoxShape.rectangle : BoxShape.circle,
-          borderRadius: borderRadius,
+          borderRadius: BorderRadius.circular(radius * 2.5),
         ),
         alignment: Alignment.center,
         child: Text(
@@ -82,7 +148,7 @@ class MemberAvatar extends ConsumerWidget {
     }
 
     return ClipRRect(
-      borderRadius: borderRadius ?? BorderRadius.circular(radius),
+      borderRadius: BorderRadius.circular(radius * 2.5),
       child: Image.network(
         resolvedUrl,
         width: diameter,

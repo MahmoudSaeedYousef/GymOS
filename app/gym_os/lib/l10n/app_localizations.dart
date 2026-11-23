@@ -1369,6 +1369,78 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'متابعة التعديل'**
   String get keepEditing;
+
+  /// No description provided for @gender.
+  ///
+  /// In ar, this message translates to:
+  /// **'النوع'**
+  String get gender;
+
+  /// No description provided for @genderMale.
+  ///
+  /// In ar, this message translates to:
+  /// **'ذكر'**
+  String get genderMale;
+
+  /// No description provided for @genderFemale.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنثى'**
+  String get genderFemale;
+
+  /// No description provided for @deletePhotoTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'حذف صورة المشترك'**
+  String get deletePhotoTitle;
+
+  /// No description provided for @deletePhotoConfirmMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل أنت متأكد من حذف صورة المشترك؟'**
+  String get deletePhotoConfirmMessage;
+
+  /// No description provided for @deletePhotoSuccess.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حذف الصورة بنجاح'**
+  String get deletePhotoSuccess;
+
+  /// No description provided for @removePhoto.
+  ///
+  /// In ar, this message translates to:
+  /// **'حذف الصورة'**
+  String get removePhoto;
+
+  /// No description provided for @photoSourceCamera.
+  ///
+  /// In ar, this message translates to:
+  /// **'الكاميرا'**
+  String get photoSourceCamera;
+
+  /// No description provided for @photoSourceGallery.
+  ///
+  /// In ar, this message translates to:
+  /// **'المعرض'**
+  String get photoSourceGallery;
+
+  /// No description provided for @delete.
+  ///
+  /// In ar, this message translates to:
+  /// **'حذف'**
+  String get delete;
+
+  /// No description provided for @singleSession.
+  ///
+  /// In ar, this message translates to:
+  /// **'حصة منفردة'**
+  String get singleSession;
+
+  /// No description provided for @singleSessionToday.
+  ///
+  /// In ar, this message translates to:
+  /// **'حصة منفردة • اليوم'**
+  String get singleSessionToday;
 }
 
 class _AppLocalizationsDelegate

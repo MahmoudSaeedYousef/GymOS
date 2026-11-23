@@ -69,8 +69,6 @@ class _CurrentInsideSheetState extends ConsumerState<CurrentInsideSheet> {
     final colors = context.gymColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final currentInsideAsync = ref.watch(currentInsideProvider);
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final isRtl = Directionality.of(context) == TextDirection.rtl;
     return Container(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.8,
@@ -229,6 +227,7 @@ class _CurrentInsideSheetState extends ConsumerState<CurrentInsideSheet> {
                               MemberAvatar(
                                 photoUrl: member.photoUrl,
                                 fullName: member.fullName,
+                                gender: member.gender,
                                 radius: 20,
                                 backgroundColor: colors.brandPrimary.withValues(
                                   alpha: 0.1,

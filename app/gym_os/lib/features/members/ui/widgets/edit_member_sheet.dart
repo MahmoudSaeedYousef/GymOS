@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gym_os/core/l10n/l10n_extension.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/ui/atoms/gym_button.dart';
@@ -20,6 +21,7 @@ class _EditMemberSheetState extends ConsumerState<EditMemberSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
+  late int _selectedGender;
   bool _isLoading = false;
 
   @override
@@ -27,6 +29,7 @@ class _EditMemberSheetState extends ConsumerState<EditMemberSheet> {
     super.initState();
     _nameController = TextEditingController(text: widget.member.fullName);
     _phoneController = TextEditingController(text: widget.member.phoneNumber);
+    _selectedGender = widget.member.gender;
   }
 
   @override
@@ -45,10 +48,13 @@ class _EditMemberSheetState extends ConsumerState<EditMemberSheet> {
     setState(() => _isLoading = true);
 
     try {
-      final updated = await ref.read(gymApiServiceProvider).updateMember(
+      final updated = await ref
+          .read(gymApiServiceProvider)
+          .updateMember(
             widget.member.id,
             fullName: fullName,
             phoneNumber: phoneNumber,
+            gender: _selectedGender,
           );
 
       if (!mounted) return;
@@ -61,9 +67,7 @@ class _EditMemberSheetState extends ConsumerState<EditMemberSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            e.toString().replaceAll('Exception: ', ''),
-          ),
+          content: Text(e.toString().replaceAll('Exception: ', '')),
           backgroundColor: context.gymColors.expired,
         ),
       );
@@ -103,10 +107,7 @@ class _EditMemberSheetState extends ConsumerState<EditMemberSheet> {
               const SizedBox(height: AppSpacing.md),
               const Text(
                 'تعديل بيانات المشترك',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -131,7 +132,10 @@ class _EditMemberSheetState extends ConsumerState<EditMemberSheet> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: colors.brandPrimary, width: 2),
+                    borderSide: BorderSide(
+                      color: colors.brandPrimary,
+                      width: 2,
+                    ),
                   ),
                 ),
                 validator: (val) {
@@ -164,7 +168,10 @@ class _EditMemberSheetState extends ConsumerState<EditMemberSheet> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: colors.brandPrimary, width: 2),
+                    borderSide: BorderSide(
+                      color: colors.brandPrimary,
+                      width: 2,
+                    ),
                   ),
                 ),
                 validator: (val) {
@@ -173,6 +180,50 @@ class _EditMemberSheetState extends ConsumerState<EditMemberSheet> {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                context.l10n.gender,
+                style: TextStyle(
+                  color: colors.textHighlight,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              SegmentedButton<int>(
+                segments: [
+                  ButtonSegment<int>(
+                    value: 1,
+                    label: Text(context.l10n.genderMale),
+                    icon: const Icon(Icons.male_rounded, size: 18),
+                  ),
+                  ButtonSegment<int>(
+                    value: 2,
+                    label: Text(context.l10n.genderFemale),
+                    icon: const Icon(Icons.female_rounded, size: 18),
+                  ),
+                ],
+                selected: _selectedGender == 0
+                    ? <int>{}
+                    : <int>{_selectedGender},
+                emptySelectionAllowed: true,
+                onSelectionChanged: (Set<int> newSelection) {
+                  setState(() {
+                    _selectedGender = newSelection.isEmpty
+                        ? 0
+                        : newSelection.first;
+                  });
+                },
+                style: ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: AppSpacing.xl),
               GymButton(

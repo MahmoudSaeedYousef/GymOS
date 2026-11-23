@@ -113,6 +113,7 @@ class MembersNotifier extends StateNotifier<MembersState> {
                   fullName: m.fullName,
                   phoneNumber: m.phone,
                   photoUrl: m.photoUrl,
+                  gender: m.gender,
                   activePlanName: m.planName,
                   subscriptionEndDate:
                       m.subscriptionEndDate?.toIso8601String(),
@@ -236,6 +237,7 @@ class MembersNotifier extends StateNotifier<MembersState> {
     String? planId,
     int? method,
     double? amountPaid,
+    int gender = 0,
   }) async {
     await _apiService.createMember(
       fullName: fullName,
@@ -243,6 +245,7 @@ class MembersNotifier extends StateNotifier<MembersState> {
       planId: planId,
       method: method,
       amountPaid: amountPaid,
+      gender: gender,
     );
     await loadInitial();
   }
@@ -273,6 +276,7 @@ final localMembersProvider = StreamProvider<List<MemberModel>>((ref) {
             fullName: m.fullName,
             phoneNumber: m.phone,
             photoUrl: m.photoUrl,
+            gender: m.gender,
             activePlanName: m.planName,
             subscriptionEndDate: m.subscriptionEndDate?.toIso8601String(),
             subscriptionStatus: m.status == 1 ? 'active' : 'expired',

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gym_os/core/ui/atoms/gym_text_field.dart';
 import 'package:gym_os/features/members/models/member_model.dart';
 import 'package:gym_os/features/members/providers/members_provider.dart';
+import 'package:gym_os/features/members/ui/widgets/member_avatar.dart';
 import '../../../../core/l10n/l10n_extension.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -107,18 +108,39 @@ class _QuickSearchSheetState extends ConsumerState<QuickSearchSheet> {
                   final member = filteredMembers[index];
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: colors.brandPrimary.withValues(
-                        alpha: 0.1,
-                      ),
-                      child: Text(
-                        member.fullName[0],
-                        style: TextStyle(
-                          color: colors.brandPrimary,
-                          fontWeight: FontWeight.bold,
+                    leading: Container(
+                      padding: const EdgeInsets.all(0),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color:
+                              member.subscriptionStatus.toLowerCase() ==
+                                  MemberSubscriptionStatus.active.name
+                                      .toLowerCase()
+                              ? const Color.fromARGB(255, 9, 137, 75)
+                              : member.subscriptionStatus.toLowerCase() ==
+                                    MemberSubscriptionStatus.expiringSoon.name
+                                        .toLowerCase()
+                              ? context.gymColors.warning
+                              : context.gymColors.expired,
+                          width: 1.2,
                         ),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: MemberAvatar(
+                        photoUrl: member.photoUrl,
+                        fullName: member.fullName,
+                        gender: member.gender,
+                        radius: 20,
+                        fontSize: 16,
                       ),
                     ),
+                    // MemberAvatar(
+                    //   photoUrl: member.photoUrl,
+                    //   fullName: member.fullName,
+                    //   gender: member.gender,
+                    //   radius: 20,
+                    //   fontSize: 16,
+                    // ),
                     title: Text(
                       member.fullName,
                       style: const TextStyle(

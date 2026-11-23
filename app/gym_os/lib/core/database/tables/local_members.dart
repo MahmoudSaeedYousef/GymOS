@@ -38,6 +38,9 @@ class LocalMembers extends Table {
   /// Relative or full URL to member's photo.
   TextColumn get photoUrl => text().nullable()();
 
+  /// Member gender (0 = unspecified, 1 = male, 2 = female).
+  IntColumn get gender => integer().withDefault(const Constant(0))();
+
   /// Local dirty flag: true when modified locally and awaiting sync.
   BoolColumn get isDirty => boolean().withDefault(const Constant(false))();
 

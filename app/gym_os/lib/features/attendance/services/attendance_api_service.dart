@@ -98,12 +98,16 @@ class AttendanceApiService {
             .toSet();
 
         Map<String, String?> photoMap = {};
+        Map<String, int> genderMap = {};
         if (memberIds.isNotEmpty) {
           final members = await (_db.select(_db.localMembers)
                 ..where((t) => t.id.isIn(memberIds)))
               .get();
           photoMap = {
             for (final m in members) m.id: m.photoUrl,
+          };
+          genderMap = {
+            for (final m in members) m.id: m.gender,
           };
         }
 
@@ -115,6 +119,7 @@ class AttendanceApiService {
                   phoneNumber: a.memberPhone ?? '',
                   checkInTime: a.checkInTime,
                   photoUrl: a.memberId != null ? photoMap[a.memberId] : null,
+                  gender: a.memberId != null ? (genderMap[a.memberId] ?? 0) : 0,
                 ))
             .toList();
       }

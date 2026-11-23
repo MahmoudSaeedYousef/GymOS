@@ -11,4 +11,6 @@ public record MemberDto(
     DateOnly? SubscriptionEndDate,
     string SubscriptionStatus,
     [property: JsonPropertyName("photoUrl")] string? PhotoUrl = null,
-    [property: JsonPropertyName("gender")] Gender Gender = Gender.Unspecified);
+    [property: JsonPropertyName("gender")] Gender Gender = Gender.Unspecified,
+    [property: JsonPropertyName("isGuest")] bool IsGuest = false,
+    [property: JsonPropertyName("isSingleSession")] bool IsSingleSession = false);
