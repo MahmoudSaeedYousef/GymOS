@@ -105,7 +105,7 @@ class AppFontNotifier extends Notifier<AppFontOption> {
     } catch (_) {
       // Fallback
     }
-    return AppFontOption.systemDefault;
+    return AppFontOption.azer;
   }
 
   Future<void> setFont(AppFontOption option) async {

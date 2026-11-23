@@ -922,9 +922,7 @@ class _DashboardHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isLight
-                      ? colors.brandPrimary.withValues(alpha: 0.2)
-                      : colors.textMuted,
+                  color: colors.brandPrimary.withValues(alpha: 0.2),
                   width: 1.2,
                 ),
                 boxShadow: [

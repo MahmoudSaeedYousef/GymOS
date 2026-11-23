@@ -1,4 +1,5 @@
 using GymOS.Application.Features.Dashboard.Queries.GetStats;
+using GymOS.Application.Features.Payments.Queries.GetPayments;
 using GymOS.Domain.Entities;
 using GymOS.Domain.Enums;
 using GymOS.Tests.Helpers;
@@ -215,5 +216,156 @@ public class GetDashboardStatsTests
 
         // MonthlyDropInRevenue = 100 + 80 = 180
         Assert.Equal(180m, result.MonthlyDropInRevenue);
+    }
+
+    [Fact]
+    public async Task Handle_TodayRevenue_EqualsTodayChartBucketAmount_IncludingMidnightAndSingleSession()
+    {
+        // Arrange
+        var tenantId = Guid.NewGuid();
+        var context = TestDbContextFactory.Create(tenantId.ToString());
+
+        var tenant = new GymTenant
+        {
+            Id = tenantId,
+            Name = "Revenue Chart Sync Test Gym",
+            Subdomain = "revenuechartsync",
+            DefaultSessionDurationMinutes = 120
+        };
+        context.Tenants.Add(tenant);
+
+        var plan = new Plan
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Name = "Monthly Plan",
+            Price = 1000m,
+            DurationInDays = 30
+        };
+        context.Plans.Add(plan);
+
+        var member1 = new ApplicationUser
+        {
+            Id = "member_1",
+            UserName = "member1",
+            FullName = "Member One",
+            TenantId = tenantId
+        };
+        var guest1 = new ApplicationUser
+        {
+            Id = "guest_1",
+            UserName = "guest1",
+            FullName = "Guest One",
+            IsGuest = true,
+            TenantId = tenantId
+        };
+        var guest2 = new ApplicationUser
+        {
+            Id = "guest_2",
+            UserName = "guest2",
+            FullName = "Guest Two",
+            IsGuest = true,
+            TenantId = tenantId
+        };
+        context.Users.AddRange(member1, guest1, guest2);
+
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+        var tomorrow = today.AddDays(1);
+        var yesterday = today.AddDays(-1);
+
+        // 1. Regular payment today at midday (1000 EGP)
+        var regularPaymentToday = new PaymentRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = "member_1",
+            PlanId = plan.Id,
+            Amount = 1000m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = today.AddHours(12),
+            IsDropIn = false
+        };
+
+        // 2. Single-session (drop-in) payment today (100 EGP) -> Total 1100 so far
+        var dropInPaymentToday = new PaymentRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = "guest_1",
+            Amount = 100m,
+            Method = PaymentMethod.InstaPay,
+            PaymentDate = today.AddHours(14),
+            IsDropIn = true
+        };
+
+        // 3. Single-session (drop-in) payment near end-of-day UTC (35 EGP) at 23:59:30 UTC
+        // (Edge case: testing day boundary precision)
+        var dropInPaymentNearMidnight = new PaymentRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = "guest_2",
+            Amount = 35m,
+            Method = PaymentMethod.VodafoneCash,
+            PaymentDate = today.AddHours(23).AddMinutes(59).AddSeconds(30),
+            IsDropIn = true
+        };
+
+        // 4. Payment yesterday at 23:55 UTC (prior day boundary, should NOT be in TodayRevenue or today's bucket)
+        var paymentYesterday = new PaymentRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = "member_old",
+            Amount = 450m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = yesterday.AddHours(23).AddMinutes(55),
+            IsDropIn = false
+        };
+
+        // 5. Payment tomorrow at 00:05 UTC (future boundary, should NOT be in TodayRevenue or today's bucket)
+        var paymentTomorrow = new PaymentRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.ToString(),
+            MemberId = "member_future",
+            Amount = 700m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = tomorrow.AddMinutes(5),
+            IsDropIn = false
+        };
+
+        context.PaymentRecords.AddRange(
+            regularPaymentToday,
+            dropInPaymentToday,
+            dropInPaymentNearMidnight,
+            paymentYesterday,
+            paymentTomorrow
+        );
+        await context.SaveChangesAsync();
+
+        var dashboardHandler = new GetDashboardStatsQueryHandler(context);
+        var paymentsHandler = new GetPaymentsQueryHandler(context);
+
+        // Act
+        var stats = await dashboardHandler.Handle(new GetDashboardStatsQuery(), CancellationToken.None);
+        var paymentsSummary = await paymentsHandler.Handle(new GetPaymentsQuery("today"), CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(stats.Last7DaysRevenue);
+        Assert.Equal(7, stats.Last7DaysRevenue.Count);
+
+        var todayChartBucket = stats.Last7DaysRevenue[6];
+        Assert.Equal(DateOnly.FromDateTime(today), todayChartBucket.Date);
+
+        // 1000 (regular) + 100 (drop-in) + 35 (drop-in near midnight) = 1135m
+        const decimal expectedTodayRevenue = 1135m;
+        Assert.Equal(expectedTodayRevenue, stats.TodayRevenue);
+        Assert.Equal(expectedTodayRevenue, todayChartBucket.Amount);
+        Assert.Equal(stats.TodayRevenue, todayChartBucket.Amount);
+
+        // Also verify details endpoint matches exactly
+        Assert.Equal(stats.TodayRevenue, paymentsSummary.TotalAmount);
     }
 }
