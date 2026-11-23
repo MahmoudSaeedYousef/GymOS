@@ -12,12 +12,14 @@ class SyncState {
   final bool isOnline;
   final bool isSyncing;
   final int pendingCount;
+  final int failedCount;
   final DateTime? lastSyncedAt;
 
   const SyncState({
     required this.isOnline,
     required this.isSyncing,
     required this.pendingCount,
+    this.failedCount = 0,
     this.lastSyncedAt,
   });
 
@@ -25,12 +27,14 @@ class SyncState {
     bool? isOnline,
     bool? isSyncing,
     int? pendingCount,
+    int? failedCount,
     DateTime? lastSyncedAt,
   }) {
     return SyncState(
       isOnline: isOnline ?? this.isOnline,
       isSyncing: isSyncing ?? this.isSyncing,
       pendingCount: pendingCount ?? this.pendingCount,
+      failedCount: failedCount ?? this.failedCount,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
     );
   }
@@ -45,11 +49,13 @@ class SyncEngine {
   bool _isSyncing = false;
   bool _isOnline = true;
   int _pendingCount = 0;
+  int _failedCount = 0;
   DateTime? _lastSyncedAt;
 
   final StreamController<SyncState> _stateController =
       StreamController<SyncState>.broadcast();
   StreamSubscription<int>? _pendingSubscription;
+  StreamSubscription<int>? _failedSubscription;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   SyncEngine({
@@ -63,12 +69,14 @@ class SyncEngine {
   bool get isSyncing => _isSyncing;
   bool get isOnline => _isOnline;
   int get pendingCount => _pendingCount;
+  int get failedCount => _failedCount;
   DateTime? get lastSyncedAt => _lastSyncedAt;
 
   SyncState get currentState => SyncState(
         isOnline: _isOnline,
         isSyncing: _isSyncing,
         pendingCount: _pendingCount,
+        failedCount: _failedCount,
         lastSyncedAt: _lastSyncedAt,
       );
 
@@ -77,6 +85,11 @@ class SyncEngine {
   void _init() {
     _pendingSubscription = db.syncOutboxDao.watchPendingCount().listen((count) {
       _pendingCount = count;
+      _emitState();
+    });
+
+    _failedSubscription = db.syncOutboxDao.watchFailedCount().listen((count) {
+      _failedCount = count;
       _emitState();
     });
 
@@ -401,18 +414,34 @@ class SyncEngine {
         );
       } catch (e) {
         final statusCode = (e is DioException) ? e.response?.statusCode : null;
+        final responseData = (e is DioException) ? e.response?.data : null;
+        final endpoint = (e is DioException) ? e.requestOptions.path : op.entityType;
+
+        debugPrint(
+          '[SyncEngine] Push failed for op #${op.id} (${op.entityType} -> $endpoint): '
+          'status=$statusCode, response=$responseData, error=$e',
+        );
+
+        final conciseError = statusCode != null
+            ? 'HTTP $statusCode ($endpoint): ${responseData ?? e.toString()}'
+            : e.toString();
+
         if (statusCode != null &&
             statusCode >= 400 &&
             statusCode < 500 &&
             statusCode != 401) {
           // Permanent 4xx client/validation error (e.g. 400, 422, 409):
           // Record error and mark failed so subsequent FIFO operations are not blocked.
-          await db.syncOutboxDao.markFailed(op.id, e.toString());
+          await db.syncOutboxDao.markFailed(
+            op.id,
+            conciseError,
+            forcePermanentlyFailed: true,
+          );
           continue;
         } else {
           // Network, connection timeout, 5xx server error or 401 auth:
           // Mark failed and break push loop to preserve strict FIFO.
-          await db.syncOutboxDao.markFailed(op.id, e.toString());
+          await db.syncOutboxDao.markFailed(op.id, conciseError);
           break;
         }
       }
@@ -639,8 +668,14 @@ class SyncEngine {
     } catch (_) {}
   }
 
+  Future<void> retryFailed() async {
+    await db.syncOutboxDao.retryFailedOperations();
+    await syncAll();
+  }
+
   void dispose() {
     _pendingSubscription?.cancel();
+    _failedSubscription?.cancel();
     _connectivitySubscription?.cancel();
     _stateController.close();
   }

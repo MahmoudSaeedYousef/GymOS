@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -154,5 +155,46 @@ void main() {
     expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
     final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
     expect(tooltip.message, 'Offline');
+  });
+
+  testWidgets('SyncStatusPill shows red badge and sync_problem_rounded when failedCount > 0, and opens sheet on tap', (tester) async {
+    // Seed failed outbox item
+    await db.into(db.syncOutbox).insert(
+          SyncOutboxCompanion.insert(
+            operationId: 'op-failed-pill',
+            entityType: 'checkin',
+            entityId: 'att-failed',
+            payloadJson: '{}',
+            status: const Value('failed'),
+            lastError: const Value('HTTP 400 (/api/attendance): Invalid check-in'),
+            retryCount: const Value(5),
+            createdAt: DateTime.now(),
+          ),
+        );
+
+    final container = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        connectivityProvider.overrideWithValue(testConnectivity),
+        dioProvider.overrideWithValue(Dio()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(buildTestPill(container: container));
+    await tester.pumpAndSettle();
+
+    // Must show '1' badge and red/sync_problem_rounded icon (NOT sync_rounded or green!)
+    expect(find.text('1'), findsOneWidget);
+    expect(find.byIcon(Icons.sync_problem_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.sync_rounded), findsNothing);
+
+    // Tap opens the failed operations sheet
+    await tester.tap(find.byType(SyncStatusPill));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Failed Sync Items'), findsOneWidget);
+    expect(find.text('HTTP 400 (/api/attendance): Invalid check-in'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
   });
 }
