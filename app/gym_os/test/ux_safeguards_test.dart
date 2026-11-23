@@ -83,6 +83,7 @@ void main() {
           ],
           home: const MainLayout(
             children: [
+              Scaffold(body: Center(child: Text('Overview Mock Screen'))),
               Scaffold(body: Center(child: Text('Dashboard Mock Screen'))),
               Scaffold(body: Center(child: Text('Members Mock Screen'))),
               Scaffold(body: Center(child: Text('Settings Mock Screen'))),

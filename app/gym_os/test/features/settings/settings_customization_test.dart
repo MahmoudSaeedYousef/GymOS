@@ -66,7 +66,14 @@ void main() {
 
       expect(find.text('خط التطبيق'), findsOneWidget);
       expect(find.text('لون التطبيق'), findsOneWidget);
+      expect(find.text('آزر'), findsOneWidget);
+
+      // Open the font selector dropdown to reveal all font options
+      await tester.tap(find.text('آزر'));
+      await tester.pumpAndSettle();
+
       expect(find.text('الافتراضي'), findsOneWidget);
+      expect(find.text('اليمامة'), findsOneWidget);
 
       // 5 color presets should be rendered
       expect(find.byType(InkWell), findsWidgets);
@@ -84,7 +91,14 @@ void main() {
 
       expect(find.text('App Font'), findsOneWidget);
       expect(find.text('Accent Color'), findsOneWidget);
+      expect(find.text('Azer'), findsOneWidget);
+
+      // Open the font selector dropdown to reveal all font options
+      await tester.tap(find.text('Azer'));
+      await tester.pumpAndSettle();
+
       expect(find.text('Default'), findsOneWidget);
+      expect(find.text('Al-Yamama'), findsOneWidget);
     });
 
     testWidgets('switching font updates state and persists in SharedPreferences',
@@ -96,19 +110,19 @@ void main() {
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
-      // Open the font dropdown
-      await tester.tap(find.text('الافتراضي'));
+      // Open the font dropdown (default selected is Azer)
+      await tester.tap(find.text('آزر'));
       await tester.pumpAndSettle();
 
-      // Select Azer font
-      await tester.tap(find.text('آزر').last);
+      // Select Default font
+      await tester.tap(find.text('الافتراضي').last);
       await tester.pumpAndSettle();
 
-      expect(prefs.getString('gym_os_selected_font'), 'azer');
-      expect(find.text('آزر'), findsOneWidget);
+      expect(prefs.getString('gym_os_selected_font'), 'systemDefault');
+      expect(find.text('الافتراضي'), findsOneWidget);
 
       // Open dropdown again and select Al-Yamama
-      await tester.tap(find.text('آزر'));
+      await tester.tap(find.text('الافتراضي'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('اليمامة').last);

@@ -853,6 +853,9 @@ void main() {
         final result = await service.recordDropInVisit(request);
         expect(result.succeeded, isTrue);
 
+        // Allow background unawaited syncNow() triggered during offline recording to complete
+        await Future.delayed(Duration.zero);
+
         connectivity.emit([ConnectivityResult.wifi]);
         await syncEngine.syncAll();
 
