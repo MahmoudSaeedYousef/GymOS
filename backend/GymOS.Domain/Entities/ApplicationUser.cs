@@ -1,3 +1,4 @@
+using GymOS.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 
 namespace GymOS.Domain.Entities;
@@ -17,6 +18,7 @@ public class ApplicationUser : IdentityUser
     public DateTime? SubscriptionEndDate { get; set; }
     public bool IsGuest { get; set; } = false;
     public string? PhotoUrl { get; set; }
+    public Gender Gender { get; set; } = Gender.Unspecified;
     public virtual ICollection<AttendanceRecord> AttendanceRecords { get; set; } = new List<AttendanceRecord>();
     public virtual ICollection<PaymentRecord> PaymentRecords { get; set; } = new List<PaymentRecord>();
     

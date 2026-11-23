@@ -46,6 +46,9 @@ namespace GymOS.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("Gender")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsGuest")
                         .HasColumnType("boolean");
 

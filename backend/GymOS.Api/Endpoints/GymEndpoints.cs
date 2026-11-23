@@ -1,7 +1,9 @@
 using GymOS.Application.Features.Members.Commands.CreateMember;
+using GymOS.Application.Features.Members.Commands.DeleteMemberPhoto;
 using GymOS.Application.Features.Members.Commands.UpdateMember;
 using GymOS.Application.Features.Members.Commands.UploadMemberPhoto;
 using GymOS.Application.Features.Members.DTOs;
+using GymOS.Application.Features.Members.Queries.GetMemberById;
 using GymOS.Application.Features.Members.Queries.GetMembers;
 using GymOS.Application.Features.Members.Queries.GetMembersSummary;
 using GymOS.Application.Features.Plans;
@@ -46,7 +48,7 @@ public static class GymEndpoints
 
         group.MapPut("/members/{id}", async (string id, UpdateMemberRequest request, ISender sender) =>
         {
-            var result = await sender.Send(new UpdateMemberCommand(id, request.FullName, request.PhoneNumber));
+            var result = await sender.Send(new UpdateMemberCommand(id, request.FullName, request.PhoneNumber, request.Gender));
             if (!result.IsSuccess)
             {
                 return result.StatusCode == 404
@@ -78,6 +80,20 @@ public static class GymEndpoints
         .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin,Manager" })
         .DisableAntiforgery();
 
+        group.MapDelete("/members/{id}/photo", async (string id, ISender sender) =>
+        {
+            var result = await sender.Send(new DeleteMemberPhotoCommand(id));
+            if (!result.IsSuccess)
+            {
+                return result.StatusCode == 404
+                    ? Results.NotFound(new { message = result.ErrorMessage })
+                    : Results.BadRequest(new { message = result.ErrorMessage });
+            }
+
+            return Results.NoContent();
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin,Manager" });
+
         group.MapGet("/members/summary", async (ISender sender) =>
         {
             var summary = await sender.Send(new GetMembersSummaryQuery());
@@ -88,6 +104,12 @@ public static class GymEndpoints
         {
             var result = await sender.Send(new GetMembersQuery(search, cursor,filter, sortBy, pageSize ?? 20));
             return Results.Ok(result);
+        });
+
+        group.MapGet("/members/{id}", async (string id, ISender sender) =>
+        {
+            var result = await sender.Send(new GetMemberByIdQuery(id));
+            return result is not null ? Results.Ok(result) : Results.NotFound(new { message = "Member not found." });
         });
 
         // Map root /api/members routes to support direct /api/members pathing as well
@@ -105,9 +127,15 @@ public static class GymEndpoints
             return Results.Ok(result);
         });
 
+        membersGroup.MapGet("/{id}", async (string id, ISender sender) =>
+        {
+            var result = await sender.Send(new GetMemberByIdQuery(id));
+            return result is not null ? Results.Ok(result) : Results.NotFound(new { message = "Member not found." });
+        });
+
         membersGroup.MapPut("/{id}", async (string id, UpdateMemberRequest request, ISender sender) =>
         {
-            var result = await sender.Send(new UpdateMemberCommand(id, request.FullName, request.PhoneNumber));
+            var result = await sender.Send(new UpdateMemberCommand(id, request.FullName, request.PhoneNumber, request.Gender));
             if (!result.IsSuccess)
             {
                 return result.StatusCode == 404
@@ -138,5 +166,19 @@ public static class GymEndpoints
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin,Manager" })
         .DisableAntiforgery();
+
+        membersGroup.MapDelete("/{id}/photo", async (string id, ISender sender) =>
+        {
+            var result = await sender.Send(new DeleteMemberPhotoCommand(id));
+            if (!result.IsSuccess)
+            {
+                return result.StatusCode == 404
+                    ? Results.NotFound(new { message = result.ErrorMessage })
+                    : Results.BadRequest(new { message = result.ErrorMessage });
+            }
+
+            return Results.NoContent();
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin,Manager" });
     }
 }
