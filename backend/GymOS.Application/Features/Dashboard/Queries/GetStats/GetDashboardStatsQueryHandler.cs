@@ -31,7 +31,7 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
             .CountAsync(cancellationToken: cancellationToken);
             
         var todayRevenue = await context.PaymentRecords
-            .Where(p => p.PaymentDate >= today)
+            .Where(p => p.PaymentDate >= today && p.PaymentDate < tomorrow)
             .SumAsync(p => p.Amount, cancellationToken);
 
         var monthlyRevenue = await context.PaymentRecords
@@ -63,7 +63,13 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
             .Select(a => new { a.MemberId, a.CheckInTime })
             .ToListAsync(cancellationToken);
 
+        var paymentsPast7Days = await context.PaymentRecords
+            .Where(p => p.PaymentDate >= sevenDaysAgo && p.PaymentDate < tomorrow)
+            .Select(p => new { p.Amount, p.PaymentDate })
+            .ToListAsync(cancellationToken);
+
         var last7DaysAttendance = new List<DailyAttendanceStatDto>();
+        var last7DaysRevenue = new List<DailyRevenueStatDto>();
         for (var i = 0; i < 7; i++)
         {
             var targetDay = sevenDaysAgo.AddDays(i);
@@ -76,7 +82,12 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
                 .Distinct()
                 .Count();
 
+            var revenue = paymentsPast7Days
+                .Where(p => p.PaymentDate >= targetDay && p.PaymentDate < nextDay)
+                .Sum(p => p.Amount);
+
             last7DaysAttendance.Add(new DailyAttendanceStatDto(dateOnly, count));
+            last7DaysRevenue.Add(new DailyRevenueStatDto(dateOnly, revenue));
         }
         
         return new DashboardStatsDto(
@@ -87,7 +98,8 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
             TodayRevenue: todayRevenue,
             MonthlyDropInRevenue: monthlyDropInRevenue,
             CurrentInside: currentInside,
-            Last7DaysAttendance: last7DaysAttendance
+            Last7DaysAttendance: last7DaysAttendance,
+            Last7DaysRevenue: last7DaysRevenue
         );
     }
 }

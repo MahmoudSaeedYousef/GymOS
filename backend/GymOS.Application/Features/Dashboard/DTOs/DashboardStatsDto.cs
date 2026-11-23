@@ -3,6 +3,11 @@ public record DailyAttendanceStatDto(
     int Count
 );
 
+public record DailyRevenueStatDto(
+    DateOnly Date,
+    decimal Amount
+);
+
 public record DashboardStatsDto(
     int ActiveMembersCount,
     int TodayCheckInsCount,
@@ -11,5 +16,6 @@ public record DashboardStatsDto(
     decimal TodayRevenue,
     decimal MonthlyDropInRevenue,
     int CurrentInside,
-    List<DailyAttendanceStatDto>? Last7DaysAttendance = null
+    List<DailyAttendanceStatDto>? Last7DaysAttendance = null,
+    List<DailyRevenueStatDto>? Last7DaysRevenue = null
 );

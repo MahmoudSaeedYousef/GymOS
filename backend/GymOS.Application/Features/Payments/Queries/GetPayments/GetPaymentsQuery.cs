@@ -34,13 +34,14 @@ public class GetPaymentsQueryHandler(IGymDbContext context)
     {
         var now = DateTime.UtcNow;
         var today = now.Date;
+        var tomorrow = today.AddDays(1);
         var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var query = context.PaymentRecords.AsQueryable();
 
         query = request.Period.ToLower() switch
         {
-            "today" => query.Where(p => p.PaymentDate >= today),
+            "today" => query.Where(p => p.PaymentDate >= today && p.PaymentDate < tomorrow),
             "month" => query.Where(p => p.PaymentDate >= startOfMonth),
             _ => query
         };
@@ -49,9 +50,9 @@ public class GetPaymentsQueryHandler(IGymDbContext context)
             .OrderByDescending(p => p.PaymentDate)
             .Select(p => new PaymentItemDto(
                 p.Id,
-                p.Member.FullName,
-                p.Member.PhoneNumber ?? string.Empty,
-                p.Plan.Name,
+                p.Member != null ? p.Member.FullName : (p.Notes ?? "Guest"),
+                p.Member != null ? (p.Member.PhoneNumber ?? string.Empty) : string.Empty,
+                p.Plan != null ? p.Plan.Name : (p.IsDropIn ? "حصة منفردة" : string.Empty),
                 p.Amount,
                 p.Method,
                 p.PaymentDate,

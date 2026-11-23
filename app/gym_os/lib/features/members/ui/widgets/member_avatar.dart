@@ -58,9 +58,22 @@ class MemberAvatar extends ConsumerWidget {
     final diameter = radius * 2.5;
 
     Widget buildFallback() {
+      BoxDecoration buildBoxDecoration() {
+        if (borderRadius != null) {
+          return BoxDecoration(
+            color: bgColor,
+            borderRadius: borderRadius,
+          );
+        }
+        return BoxDecoration(
+          color: bgColor,
+          shape: BoxShape.circle,
+        );
+      }
+
       if (gender == 1) {
         return ClipRRect(
-          borderRadius: BorderRadius.circular(radius * 2.5),
+          borderRadius: borderRadius ?? BorderRadius.circular(radius * 2.5),
           child: Image.asset(
             'assets/images/avatar_male.jpg',
             width: diameter,
@@ -69,13 +82,7 @@ class MemberAvatar extends ConsumerWidget {
             errorBuilder: (context, error, stackTrace) => Container(
               width: diameter,
               height: diameter,
-              decoration: BoxDecoration(
-                color: bgColor,
-                shape: borderRadius != null
-                    ? BoxShape.rectangle
-                    : BoxShape.circle,
-                borderRadius: borderRadius,
-              ),
+              decoration: buildBoxDecoration(),
               alignment: Alignment.center,
               child: Text(
                 initialLetter,
@@ -90,7 +97,7 @@ class MemberAvatar extends ConsumerWidget {
         );
       } else if (gender == 2) {
         return ClipRRect(
-          borderRadius: BorderRadius.circular(radius * 2.5),
+          borderRadius: borderRadius ?? BorderRadius.circular(radius * 2.5),
           child: Image.asset(
             'assets/images/avatar_female.jpg',
             width: diameter,
@@ -99,13 +106,7 @@ class MemberAvatar extends ConsumerWidget {
             errorBuilder: (context, error, stackTrace) => Container(
               width: diameter,
               height: diameter,
-              decoration: BoxDecoration(
-                color: bgColor,
-                shape: borderRadius != null
-                    ? BoxShape.rectangle
-                    : BoxShape.circle,
-                borderRadius: borderRadius,
-              ),
+              decoration: buildBoxDecoration(),
               alignment: Alignment.center,
               child: Text(
                 initialLetter,
@@ -123,11 +124,7 @@ class MemberAvatar extends ConsumerWidget {
       return Container(
         width: diameter,
         height: diameter,
-        decoration: BoxDecoration(
-          color: bgColor,
-          shape: borderRadius != null ? BoxShape.rectangle : BoxShape.circle,
-          borderRadius: BorderRadius.circular(radius * 2.5),
-        ),
+        decoration: buildBoxDecoration(),
         alignment: Alignment.center,
         child: Text(
           initialLetter,
