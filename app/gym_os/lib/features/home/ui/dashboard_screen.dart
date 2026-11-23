@@ -184,6 +184,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       final message = await ref.read(attendanceApiProvider).checkIn(member.id);
       HapticFeedback.lightImpact();
 
+      ref.invalidate(dashboardStatsProvider);
+      ref.invalidate(membersProvider);
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

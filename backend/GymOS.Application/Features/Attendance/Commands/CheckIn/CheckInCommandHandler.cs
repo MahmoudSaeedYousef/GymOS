@@ -30,40 +30,45 @@ public class CheckInCommandHandler(IGymDbContext context) : IRequestHandler<Chec
 
             var checkInTime = request.OccurredAtUtc ?? request.CheckInTime ?? DateTime.UtcNow;
 
-            var recordId = (request.ClientId.HasValue && request.ClientId.Value != Guid.Empty)
-                ? request.ClientId.Value
-                : (!string.IsNullOrWhiteSpace(request.MemberId) && Guid.TryParse(request.Id, out var parsedGuid) && parsedGuid != Guid.Empty
-                    ? parsedGuid
-                    : Guid.CreateVersion7());
+            var isDistinctClientId = request.ClientId.HasValue
+                && request.ClientId.Value != Guid.Empty
+                && (!Guid.TryParse(member.Id, out var memberGuid) || request.ClientId.Value != memberGuid);
+
+            var recordId = isDistinctClientId
+                ? request.ClientId!.Value
+                : Guid.CreateVersion7();
 
             if (recordId == Guid.Empty)
             {
                 recordId = Guid.CreateVersion7();
             }
 
-            // 1. فحص ما إذا كان السجل موجوداً محلياً بالذاكرة أو بقاعدة البيانات (Idempotent retry من Offline Sync)
-            var trackedRecord = context.AttendanceRecords.Local.FirstOrDefault(a => a.Id == recordId);
-            if (trackedRecord != null)
+            // 1. فحص ما إذا كان السجل موجوداً محلياً بالذاكرة أو بقاعدة البيانات فقط عند وجود ClientId فريد (Idempotent retry من Offline Sync)
+            if (isDistinctClientId)
             {
-                if (!string.IsNullOrWhiteSpace(request.Notes) && trackedRecord.Notes != request.Notes)
+                var trackedRecord = context.AttendanceRecords.Local.FirstOrDefault(a => a.Id == recordId);
+                if (trackedRecord != null)
                 {
-                    trackedRecord.Notes = request.Notes;
-                    await context.SaveChangesAsync(cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(request.Notes) && trackedRecord.Notes != request.Notes)
+                    {
+                        trackedRecord.Notes = request.Notes;
+                        await context.SaveChangesAsync(cancellationToken);
+                    }
+                    return new CheckInResult(true, "تم تسجيل الحضور بنجاح.", trackedRecord.Id);
                 }
-                return new CheckInResult(true, "تم تسجيل الحضور بنجاح.", trackedRecord.Id);
-            }
 
-            var existingRecord = await context.AttendanceRecords
-                .FirstOrDefaultAsync(a => a.Id == recordId, cancellationToken);
+                var existingRecord = await context.AttendanceRecords
+                    .FirstOrDefaultAsync(a => a.Id == recordId, cancellationToken);
 
-            if (existingRecord != null)
-            {
-                if (!string.IsNullOrWhiteSpace(request.Notes) && existingRecord.Notes != request.Notes)
+                if (existingRecord != null)
                 {
-                    existingRecord.Notes = request.Notes;
-                    await context.SaveChangesAsync(cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(request.Notes) && existingRecord.Notes != request.Notes)
+                    {
+                        existingRecord.Notes = request.Notes;
+                        await context.SaveChangesAsync(cancellationToken);
+                    }
+                    return new CheckInResult(true, "تم تسجيل الحضور بنجاح.", existingRecord.Id);
                 }
-                return new CheckInResult(true, "تم تسجيل الحضور بنجاح.", existingRecord.Id);
             }
 
             // 2. إغلاق الجلسات المفتوحة السابقة لهذا العضو (مع استبعاد recordId)

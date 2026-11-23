@@ -27,18 +27,24 @@ class AttendanceApiService {
   AttendanceApiService(this._dio, [this._db, this._syncEngine]);
 
   /// Records member check-in locally in Drift + SyncOutbox in <50ms and triggers background sync.
-  Future<String> checkIn(String id, {String? memberId, String? notes}) async {
-    final targetMemberId = memberId ?? id;
+  Future<String> checkIn(
+    String memberId, {
+    String? attendanceId,
+    String? notes,
+  }) async {
+    final targetMemberId = memberId;
+    final attId = (attendanceId != null && attendanceId.isNotEmpty)
+        ? attendanceId
+        : UuidGenerator.v4();
 
     if (_db != null) {
-      final attId = id.isNotEmpty ? id : UuidGenerator.v4();
       final opId = UuidGenerator.v4();
       final now = DateTime.now();
 
       // Look up member name from local database if available
-      final member = await (_db.select(_db.localMembers)
-            ..where((t) => t.id.equals(targetMemberId)))
-          .getSingleOrNull();
+      final member = await (_db.select(
+        _db.localMembers,
+      )..where((t) => t.id.equals(targetMemberId))).getSingleOrNull();
       final memberName = member?.fullName ?? 'Member';
       final memberPhone = member?.phone;
 
@@ -75,7 +81,12 @@ class AttendanceApiService {
     try {
       final response = await _dio.post(
         '/api/attendance/check-in',
-        data: {'id': id, 'memberId': memberId, 'notes': notes},
+        data: {
+          'id': attId,
+          'clientId': attId,
+          'memberId': targetMemberId,
+          'notes': notes,
+        },
       );
       return response.data['message'] ?? 'تم تسجيل الحضور بنجاح';
     } on DioException catch (e) {
@@ -88,8 +99,7 @@ class AttendanceApiService {
   /// Returns currently checked-in members from local Drift or API.
   Future<List<CurrentInsideMemberModel>> getCurrentInside() async {
     if (_db != null) {
-      final localRows =
-          await _db.attendanceDao.watchCurrentlyCheckedIn().first;
+      final localRows = await _db.attendanceDao.watchCurrentlyCheckedIn().first;
       if (localRows.isNotEmpty) {
         final memberIds = localRows
             .map((a) => a.memberId)
@@ -100,27 +110,25 @@ class AttendanceApiService {
         Map<String, String?> photoMap = {};
         Map<String, int> genderMap = {};
         if (memberIds.isNotEmpty) {
-          final members = await (_db.select(_db.localMembers)
-                ..where((t) => t.id.isIn(memberIds)))
-              .get();
-          photoMap = {
-            for (final m in members) m.id: m.photoUrl,
-          };
-          genderMap = {
-            for (final m in members) m.id: m.gender,
-          };
+          final members = await (_db.select(
+            _db.localMembers,
+          )..where((t) => t.id.isIn(memberIds))).get();
+          photoMap = {for (final m in members) m.id: m.photoUrl};
+          genderMap = {for (final m in members) m.id: m.gender};
         }
 
         return localRows
-            .map((a) => CurrentInsideMemberModel(
-                  recordId: a.id,
-                  memberId: a.memberId ?? '',
-                  fullName: a.memberName,
-                  phoneNumber: a.memberPhone ?? '',
-                  checkInTime: a.checkInTime,
-                  photoUrl: a.memberId != null ? photoMap[a.memberId] : null,
-                  gender: a.memberId != null ? (genderMap[a.memberId] ?? 0) : 0,
-                ))
+            .map(
+              (a) => CurrentInsideMemberModel(
+                recordId: a.id,
+                memberId: a.memberId ?? '',
+                fullName: a.memberName,
+                phoneNumber: a.memberPhone ?? '',
+                checkInTime: a.checkInTime,
+                photoUrl: a.memberId != null ? photoMap[a.memberId] : null,
+                gender: a.memberId != null ? (genderMap[a.memberId] ?? 0) : 0,
+              ),
+            )
             .toList();
       }
     }
