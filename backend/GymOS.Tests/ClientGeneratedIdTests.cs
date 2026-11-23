@@ -426,4 +426,74 @@ public class ClientGeneratedIdTests
         Assert.NotNull(subInDb);
         Assert.Equal(customSubId, subInDb.Id);
     }
+
+    [Fact]
+    public async Task CheckIn_WhenCalledMultipleTimesWithoutClientIdOrWithIdEqualToMemberId_CreatesNewAttendanceRecordEachTime()
+    {
+        // Arrange
+        var gymId = Guid.NewGuid();
+        var (context, userManager, _) = SetupEnvironment(gymId);
+
+        var memberGuid = Guid.NewGuid();
+        var member = new ApplicationUser
+        {
+            Id = memberGuid.ToString(),
+            UserName = "duplicate_checkin_member",
+            FullName = "Member Duplicate Checkin",
+            TenantId = gymId,
+            SubscriptionEndDate = DateTime.UtcNow.AddDays(30)
+        };
+        await userManager.CreateAsync(member, "Password@123");
+
+        var handler = new CheckInCommandHandler(context);
+
+        // Simulate legacy check-in where Id == MemberId and ClientId is null
+        var command1 = new CheckInCommand(
+            Id: member.Id,
+            MemberId: member.Id,
+            ClientId: null,
+            Notes: "First CheckIn"
+        );
+
+        // Act 1: First check-in
+        var result1 = await handler.Handle(command1, CancellationToken.None);
+        Assert.True(result1.IsSuccess);
+        Assert.NotNull(result1.AttendanceId);
+        Assert.NotEqual(memberGuid, result1.AttendanceId.Value);
+
+        // Act 2: Second check-in for the same member with Id == MemberId or ClientId matching MemberId
+        var command2 = new CheckInCommand(
+            Id: member.Id,
+            MemberId: member.Id,
+            ClientId: memberGuid, // ClientId passed as MemberId
+            Notes: "Second CheckIn"
+        );
+
+        var result2 = await handler.Handle(command2, CancellationToken.None);
+        Assert.True(result2.IsSuccess);
+        Assert.NotNull(result2.AttendanceId);
+        Assert.NotEqual(result1.AttendanceId, result2.AttendanceId);
+        Assert.NotEqual(memberGuid, result2.AttendanceId.Value);
+
+        // Act 3: Third check-in with completely null ClientId and Id
+        var command3 = new CheckInCommand(
+            MemberId: member.Id,
+            Notes: "Third CheckIn"
+        );
+
+        var result3 = await handler.Handle(command3, CancellationToken.None);
+        Assert.True(result3.IsSuccess);
+        Assert.NotNull(result3.AttendanceId);
+        Assert.NotEqual(result1.AttendanceId, result3.AttendanceId);
+        Assert.NotEqual(result2.AttendanceId, result3.AttendanceId);
+
+        // Assert: 3 distinct attendance records are created in DB
+        var totalRecords = await context.AttendanceRecords
+            .IgnoreQueryFilters()
+            .Where(a => a.MemberId == member.Id)
+            .ToListAsync();
+
+        Assert.Equal(3, totalRecords.Count);
+        Assert.Equal(3, totalRecords.Select(a => a.Id).Distinct().Count());
+    }
 }

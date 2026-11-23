@@ -527,8 +527,8 @@ void main() {
 
         final stopwatch = Stopwatch()..start();
         final message = await service.checkIn(
-          'att-client-1',
-          memberId: 'mem-1',
+          'mem-1',
+          attendanceId: 'att-client-1',
         );
         stopwatch.stop();
 
@@ -548,6 +548,11 @@ void main() {
         connectivity.emit([ConnectivityResult.wifi]);
         await syncEngine.syncNow();
         expect(await db.syncOutboxDao.getPendingOperations(), isEmpty);
+        expect(httpAdapter.requests.any((r) => r.path == '/api/attendance/check-in'), isTrue);
+        final checkInReq = httpAdapter.requests.firstWhere((r) => r.path == '/api/attendance/check-in');
+        final reqData = checkInReq.data as Map<String, dynamic>;
+        expect(reqData['memberId'], 'mem-1');
+        expect(reqData['clientId'], 'att-client-1');
       },
     );
 
@@ -556,7 +561,7 @@ void main() {
       () async {
         connectivity.emit([ConnectivityResult.none]);
         final service = AttendanceApiService(dio, db, syncEngine);
-        await service.checkIn('att-out-1', memberId: 'mem-1');
+        await service.checkIn('mem-1', attendanceId: 'att-out-1');
 
         final stopwatch = Stopwatch()..start();
         final message = await service.checkOut('att-out-1');

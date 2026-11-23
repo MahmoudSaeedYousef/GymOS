@@ -68,7 +68,11 @@ class _FakeAttendanceApiService extends AttendanceApiService {
   _FakeAttendanceApiService() : super(Dio());
 
   @override
-  Future<String> checkIn(String id, {String? memberId, String? notes}) async {
+  Future<String> checkIn(
+    String memberId, {
+    String? attendanceId,
+    String? notes,
+  }) async {
     return 'Check-in successful';
   }
 }
