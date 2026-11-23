@@ -210,10 +210,11 @@ void main() {
       expect(find.text('S'), findsOneWidget);
       expect(find.text('K'), findsOneWidget);
 
-      // Dynamic status badges
-      expect(find.text('نشط'), findsOneWidget);
-      expect(find.text('ينتهي قريباً'), findsWidgets);
-      expect(find.text('منتهي'), findsOneWidget);
+      // Quiet status badges: Normal active has no badge ("نشط" is not displayed)
+      expect(find.text('نشط'), findsNothing);
+      // Exceptions only (expiring soon concise badge or expired)
+      expect(find.text('باقي يومين'), findsWidgets);
+      expect(find.text('منتهي منذ 5 أيام'), findsWidgets);
       expect(find.text('بدون باقة'), findsAtLeastNWidgets(2));
 
       // Quick action check-in fingerprint button on active member
@@ -273,9 +274,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('إجمالي المشتركين'), findsOneWidget);
-      expect(find.text('Monthly Gold'), findsOneWidget);
-      expect(find.text('Yearly VIP'), findsOneWidget);
-      expect(find.text('Basic Plan'), findsOneWidget);
+      expect(find.text('Monthly Gold'), findsWidgets);
+      expect(find.text('Yearly VIP'), findsWidgets);
+      expect(find.text('Basic Plan'), findsWidgets);
       expect(find.text('بدون باقة'), findsWidgets);
       expect(find.text('نشط: 4'), findsOneWidget);
       expect(find.text('ينتهي قريباً: 1'), findsOneWidget);

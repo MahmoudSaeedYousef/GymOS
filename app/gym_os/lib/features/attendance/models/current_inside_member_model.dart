@@ -6,6 +6,7 @@ class CurrentInsideMemberModel {
   final String fullName;
   final String phoneNumber;
   final DateTime checkInTime;
+  final String? photoUrl;
 
   CurrentInsideMemberModel({
     required this.recordId,
@@ -13,6 +14,7 @@ class CurrentInsideMemberModel {
     required this.fullName,
     required this.phoneNumber,
     required this.checkInTime,
+    this.photoUrl,
   });
 
   /// Returns the number of minutes elapsed since the check-in time.
@@ -59,6 +61,7 @@ class CurrentInsideMemberModel {
       fullName: json['fullName'] ?? json['memberName'] ?? '',
       phoneNumber: json['phoneNumber'] ?? '',
       checkInTime: _parseUtcToLocal(json['checkInTime']),
+      photoUrl: json['photoUrl'] as String? ?? json['photo_url'] as String?,
     );
   }
 

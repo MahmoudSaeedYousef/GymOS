@@ -358,7 +358,11 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                               ),
                             );
                           }
-                          return _MemberCardItem(member: displayMembers[index]);
+                          return _MemberCardItem(
+                            member: displayMembers[index],
+                            selectedSort: state.selectedSort,
+                            isSearching: state.searchQuery.trim().isNotEmpty,
+                          );
                         },
                       ),
                     ),
@@ -390,7 +394,9 @@ class _FilterChipItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isSelected
               ? colorScheme.primary
@@ -405,6 +411,9 @@ class _FilterChipItem extends StatelessWidget {
         ),
         child: Text(
           label,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.fade,
           style: TextStyle(
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
@@ -420,7 +429,14 @@ class _FilterChipItem extends StatelessWidget {
 
 class _MemberCardItem extends ConsumerStatefulWidget {
   final MemberModel member;
-  const _MemberCardItem({required this.member});
+  final MemberSortOption selectedSort;
+  final bool isSearching;
+
+  const _MemberCardItem({
+    required this.member,
+    this.selectedSort = MemberSortOption.newest,
+    this.isSearching = false,
+  });
 
   @override
   ConsumerState<_MemberCardItem> createState() => _MemberCardItemState();
@@ -473,33 +489,124 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
     }
   }
 
+  int? get _daysRemaining {
+    final endStr = widget.member.subscriptionEndDate;
+    if (endStr == null || endStr.trim().isEmpty) return null;
+    final endDate = DateTime.tryParse(endStr);
+    if (endDate == null) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final endDay = DateTime(endDate.year, endDate.month, endDate.day);
+    return endDay.difference(today).inDays;
+  }
+
+  String _formatDaysRemaining(int days) {
+    if (days < 0) {
+      final overdue = days.abs();
+      return 'منتهي منذ $overdue ${overdue == 1 ? "يوم" : "أيام"}';
+    } else if (days == 0) {
+      return 'ينتهي اليوم';
+    } else if (days == 1) {
+      return 'ينتهي غداً';
+    } else if (days == 2) {
+      return 'باقي يومين';
+    } else if (days <= 10) {
+      return 'باقي $days أيام';
+    } else {
+      return 'باقي $days يوم';
+    }
+  }
+
+  String _getContextualInfo() {
+    final days = _daysRemaining;
+    switch (widget.selectedSort) {
+      case MemberSortOption.newest:
+        // Use relative start time if available, or fall back to remaining days
+        if (days != null) {
+          return _formatDaysRemaining(days);
+        }
+        return 'عضو جديد';
+
+      case MemberSortOption.expiringSoon:
+        if (days != null) {
+          if (days < 0) {
+            final overdue = days.abs();
+            return 'منتهي منذ $overdue ${overdue == 1 ? "يوم" : "أيام"}';
+          } else if (days == 0) {
+            return 'ينتهي اليوم';
+          } else if (days == 1) {
+            return 'ينتهي غداً';
+          } else if (days <= 10) {
+            return 'باقي $days أيام';
+          } else {
+            return 'باقي $days يوم';
+          }
+        }
+        return 'بدون تاريخ انتهاء';
+
+      case MemberSortOption.endDateDesc:
+        final formattedDate = _formatExpiryDate(widget.member.subscriptionEndDate);
+        if (formattedDate.isNotEmpty) {
+          return 'ينتهي $formattedDate';
+        }
+        return 'بدون تاريخ انتهاء';
+
+      case MemberSortOption.name:
+      case MemberSortOption.plan:
+        if (days != null) {
+          return _formatDaysRemaining(days);
+        }
+        return '';
+
+      case MemberSortOption.lastCheckIn:
+        return 'لم يحضر بعد';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final status = widget.member.status;
     final l10n = context.l10n;
 
-    // Status colors and label
-    final Color statusColor;
-    final String statusLabel;
-    switch (status) {
-      case MemberSubscriptionStatus.active:
-        statusColor = const Color(0xFF16A34A); // Crisp Green
-        statusLabel = l10n.activeStatus;
-        break;
-      case MemberSubscriptionStatus.expiringSoon:
-        statusColor = const Color(0xFFD97706); // Crisp Amber
+    // Status colors and label (Exceptions Only: Expiring Soon or Expired)
+    Color? statusColor;
+    String? statusLabel;
+    final days = _daysRemaining;
+
+    if (status == MemberSubscriptionStatus.expiringSoon) {
+      statusColor = const Color(0xFFD97706); // Crisp Amber
+      if (days != null) {
+        if (days == 0) {
+          statusLabel = 'ينتهي اليوم';
+        } else if (days == 1) {
+          statusLabel = 'ينتهي غداً';
+        } else if (days == 2) {
+          statusLabel = 'باقي يومين';
+        } else if (days <= 10) {
+          statusLabel = 'باقي $days أيام';
+        } else {
+          statusLabel = 'باقي $days يوم';
+        }
+      } else {
         statusLabel = l10n.expiringSoonStatus;
-        break;
-      case MemberSubscriptionStatus.expired:
-        statusColor = const Color(0xFFDC2626); // Crisp Red
+      }
+    } else if (status == MemberSubscriptionStatus.expired) {
+      statusColor = const Color(0xFFDC2626); // Crisp Red
+      if (days != null && days < 0) {
+        final overdue = days.abs();
+        statusLabel = 'منتهي منذ $overdue ${overdue == 1 ? "يوم" : "أيام"}';
+      } else {
         statusLabel = l10n.expiredStatus;
-        break;
-      case MemberSubscriptionStatus.withoutPlan:
-        statusColor = colorScheme.outline; // Neutral/Grey for no plan
-        statusLabel = l10n.noPlan;
-        break;
+      }
+    } else if (status == MemberSubscriptionStatus.withoutPlan) {
+      statusColor = colorScheme.outline;
+      statusLabel = l10n.noPlan;
     }
+
+    final planName = widget.member.activePlanName;
+    final contextualInfo = _getContextualInfo();
+    final isPlanSort = widget.selectedSort == MemberSortOption.plan;
 
     return GymCard(
       onTap: () {
@@ -521,8 +628,9 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Row 1: Name + Status Pill Badge
+                // Line 1: Member Full Name (bold, single line with ellipsis) + Optional Status Badge (Exceptions only)
                 Row(
                   children: [
                     Expanded(
@@ -536,69 +644,88 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: statusColor.withValues(alpha: 0.25),
-                          width: 1,
+                    if (statusLabel != null && statusColor != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: statusColor.withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          statusLabel,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
-                      child: Text(
-                        statusLabel,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
 
-                // Row 2: Phone with subtle phone icon + Plan & Expiry Date
+                // Line 2: Contextual Metadata (PlanName • ContextualInfo)
                 Row(
                   children: [
-                    Icon(
-                      Icons.phone_rounded,
-                      size: 13,
-                      color: colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.7,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      widget.member.phoneNumber,
-                      style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 12,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    if (widget.member.activePlanName != null) ...[
+                    if (planName != null && planName.trim().isNotEmpty) ...[
                       Text(
-                        ' • ',
+                        planName,
                         style: TextStyle(
-                          color: colorScheme.onSurfaceVariant.withValues(
-                            alpha: 0.5,
-                          ),
                           fontSize: 12,
+                          fontWeight:
+                              isPlanSort ? FontWeight.w600 : FontWeight.normal,
+                          color: isPlanSort
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant.withValues(
+                                  alpha: 0.85,
+                                ),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      if (contextualInfo.isNotEmpty) ...[
+                        Text(
+                          ' • ',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.5,
+                            ),
+                            fontSize: 12,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            contextualInfo,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.75,
+                              ),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ] else ...[
                       Expanded(
                         child: Text(
-                          '${widget.member.activePlanName} (${_formatExpiryDate(widget.member.subscriptionEndDate)})',
+                          contextualInfo.isNotEmpty
+                              ? contextualInfo
+                              : l10n.noPlan,
                           style: TextStyle(
                             fontSize: 12,
                             color: colorScheme.onSurfaceVariant.withValues(
-                              alpha: 0.8,
+                              alpha: 0.75,
                             ),
                           ),
                           maxLines: 1,
@@ -608,6 +735,33 @@ class _MemberCardItemState extends ConsumerState<_MemberCardItem> {
                     ],
                   ],
                 ),
+
+                // Subtle 3rd line: Phone Number (ONLY when search query is non-empty)
+                if (widget.isSearching) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.phone_rounded,
+                        size: 11,
+                        color: colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        widget.member.phoneNumber,
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.7,
+                          ),
+                          fontSize: 11,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -680,15 +834,17 @@ class _SortTriggerButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isCustomSort = selectedSort != MemberSortOption.newest;
+    final sortLabel = selectedSort.label(context.l10n);
 
     return Tooltip(
-      message: '${context.l10n.sortBy}: ${selectedSort.label(context.l10n)}',
+      message: '${context.l10n.sortBy}: $sortLabel',
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
             color: isCustomSort
                 ? colorScheme.primaryContainer
@@ -708,7 +864,7 @@ class _SortTriggerButton extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   Icon(
-                    Icons.sort_rounded,
+                    selectedSort.icon,
                     size: 18,
                     color: isCustomSort
                         ? colorScheme.primary
@@ -729,9 +885,12 @@ class _SortTriggerButton extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 5),
               Text(
-                context.l10n.sortBy,
+                sortLabel,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.fade,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: isCustomSort ? FontWeight.bold : FontWeight.w600,

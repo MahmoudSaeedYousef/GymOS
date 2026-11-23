@@ -18,6 +18,7 @@ import 'package:gym_os/features/home/ui/widgets/drop_in_session_bottom_sheet.dar
 import 'package:gym_os/features/home/ui/widgets/weekly_activity_chart_card.dart';
 import 'package:gym_os/features/members/models/member_model.dart';
 import 'package:gym_os/features/members/ui/add_member_sheet.dart';
+import 'package:gym_os/features/members/ui/widgets/member_avatar.dart';
 import 'package:gym_os/features/members/ui/widgets/quick_search_sheet.dart';
 import 'package:gym_os/features/payments/ui/renew_subscription_sheet.dart';
 import '../../../../core/l10n/l10n_extension.dart';
@@ -261,7 +262,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(
-                      AppSpacing.md,
+                      AppSpacing.lg,
                       AppSpacing.lg,
                       AppSpacing.md,
                       AppSpacing.xl,
@@ -339,8 +340,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
         // 4. Slim Currently in Gym Strip
         statsAsync.when(
-          skipLoadingOnReload: true,
-          skipLoadingOnRefresh: true,
           data: (stats) => SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -398,7 +397,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   child: Text(
                     context.l10n.viewAll,
                     style: TextStyle(
-                      color: colors.brandPrimary,
+                      color: colors.accentText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -423,8 +422,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return [
       // 1. Slim Presence Strip
       statsAsync.when(
-        skipLoadingOnReload: true,
-        skipLoadingOnRefresh: true,
         data: (stats) => SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -455,8 +452,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
       // 2. Revenue Card (Monthly Revenue)
       statsAsync.when(
-        skipLoadingOnReload: true,
-        skipLoadingOnRefresh: true,
         data: (stats) => SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -496,8 +491,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
       // 3. Compact KPI Stat Cards Grid (reduced to ~half height)
       statsAsync.when(
-        skipLoadingOnReload: true,
-        skipLoadingOnRefresh: true,
         data: (stats) => SliverPadding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
@@ -528,7 +521,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 title: context.l10n.expiredSubscriptions,
                 numericValue: stats.expiredSubscriptionsCount,
                 icon: Icons.exit_to_app_rounded,
-                accentColor: colors.expired,
+                accentColor: colors.textMuted,
                 onTap: () => context.push('/members?filter=expired'),
               ),
               _CompactStatCard(
@@ -611,22 +604,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // 1. Avatar at START side, fixed size 40dp
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: CircleAvatar(
-                    backgroundColor: colors.brandPrimary.withValues(
-                      alpha: 0.12,
-                    ),
-                    child: Text(
-                      member.fullName.isNotEmpty ? member.fullName[0] : '?',
-                      style: TextStyle(
-                        color: colors.brandPrimary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
+                MemberAvatar(
+                  photoUrl: member.photoUrl,
+                  fullName: member.fullName,
+                  radius: 20,
+                  fontSize: 16,
                 ),
                 const SizedBox(width: AppSpacing.sm),
 
@@ -779,16 +761,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             ),
             child: Row(
               children: [
-                CircleAvatar(
+                MemberAvatar(
+                  photoUrl: member.photoUrl,
+                  fullName: member.fullName,
                   radius: 20,
-                  backgroundColor: colors.brandPrimary.withValues(alpha: 0.1),
-                  child: Text(
-                    member.fullName.isNotEmpty ? member.fullName[0] : '?',
-                    style: TextStyle(
-                      color: colors.brandPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  fontSize: 16,
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -893,13 +870,14 @@ class _DashboardHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: colors.brandPrimary.withValues(alpha: 0.45),
+                  color: isLight
+                      ? colors.brandPrimary.withValues(alpha: 0.2)
+                      : colors.textMuted,
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    // color: colors.brandPrimary.withValues(alpha: 0.0722),
-                    color: colors.brandPrimary.withValues(alpha: 0.0722),
+                    color: colors.brandPrimary.withValues(alpha: 0.07),
                     blurRadius: isLight ? 12 : 4,
                     spreadRadius: 0,
                     offset: const Offset(0, 3),
@@ -914,7 +892,7 @@ class _DashboardHeader extends StatelessWidget {
                     'assets/icons/app_icon.png',
                     fit: BoxFit.cover,
                     color: !isLight
-                        ? Color.lerp(Colors.white, colors.brandPrimary, 0.25)!
+                        ? Color.lerp(Colors.white, colors.brandPrimary, 0.12)!
                         : null,
                     colorBlendMode: !isLight ? BlendMode.dstATop : null,
                     semanticLabel: context.l10n.appLogoSemanticLabel,
@@ -941,7 +919,7 @@ class _DashboardHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: colors.brandPrimary,
+                    color: colors.accentText,
                     letterSpacing: -0.3,
                   ),
                 ),

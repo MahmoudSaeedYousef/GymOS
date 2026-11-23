@@ -279,5 +279,9 @@ public class MemberPhotoAndDetailsTests
         // Assert
         var item = Assert.Single(result.Items);
         Assert.Equal($"/uploads/members/{tenantId}/pic.webp", item.PhotoUrl);
+
+        // Verify JSON serialization includes exact "photoUrl" field
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        Assert.Contains("\"photoUrl\":", json);
     }
 }

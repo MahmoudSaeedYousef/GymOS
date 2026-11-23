@@ -9,6 +9,7 @@ import 'package:gym_os/core/ui/gym_shimmer_box.dart';
 import 'package:gym_os/features/attendance/models/current_inside_member_model.dart';
 import 'package:gym_os/features/attendance/providers/attendance_provider.dart';
 import 'package:gym_os/features/attendance/services/attendance_api_service.dart';
+import 'package:gym_os/features/members/ui/widgets/member_avatar.dart';
 
 class CurrentInsideSheet extends ConsumerStatefulWidget {
   const CurrentInsideSheet({super.key});
@@ -68,7 +69,8 @@ class _CurrentInsideSheetState extends ConsumerState<CurrentInsideSheet> {
     final colors = context.gymColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final currentInsideAsync = ref.watch(currentInsideProvider);
-
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
     return Container(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.8,
@@ -205,149 +207,145 @@ class _CurrentInsideSheetState extends ConsumerState<CurrentInsideSheet> {
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final member = members[index];
-                    final isCheckingOut =
-                        _loadingRecordIds.contains(member.recordId);
+                    final isCheckingOut = _loadingRecordIds.contains(
+                      member.recordId,
+                    );
 
                     return Container(
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? colors.surfaceBackground
-                            : colors.brandPrimary.withValues(alpha: 0.03),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.grey.shade800
-                              : Colors.grey.shade200,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(AppSpacing.sm + 2),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor:
-                                colors.brandPrimary.withValues(alpha: 0.1),
-                            child: Text(
-                              member.fullName.isNotEmpty
-                                  ? member.fullName[0]
-                                  : '?',
-                              style: TextStyle(
-                                color: colors.brandPrimary,
-                                fontWeight: FontWeight.bold,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? colors.surfaceBackground
+                                : colors.brandPrimary.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade200,
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(AppSpacing.sm + 2),
+                          child: Row(
+                            children: [
+                              MemberAvatar(
+                                photoUrl: member.photoUrl,
+                                fullName: member.fullName,
+                                radius: 20,
+                                backgroundColor: colors.brandPrimary.withValues(
+                                  alpha: 0.1,
+                                ),
+                                foregroundColor: colors.brandPrimary,
                                 fontSize: 16,
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm + 2),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  member.fullName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Row(
+                              const SizedBox(width: AppSpacing.sm + 2),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(
-                                      Icons.access_time_rounded,
-                                      size: 13,
-                                      color: colors.active,
-                                    ),
-                                    const SizedBox(width: 4),
                                     Text(
-                                      member.localizedElapsedTime(
-                                        context.l10n,
-                                      ),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: colors.active,
+                                      member.fullName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
                                       ),
                                     ),
-                                    if (member.phoneNumber.isNotEmpty) ...[
-                                      Text(
-                                        ' • ',
-                                        style: TextStyle(
-                                          color: Colors.grey.shade400,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      Text(
-                                        member.phoneNumber,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.grey.shade500,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          // Compact check-out button with subtle expired tint
-                          InkWell(
-                            onTap: isCheckingOut
-                                ? null
-                                : () => _handleCheckOut(member),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: colors.expired.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color:
-                                      colors.expired.withValues(alpha: 0.25),
-                                ),
-                              ),
-                              child: isCheckingOut
-                                  ? SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: colors.expired,
-                                      ),
-                                    )
-                                  : Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                    const SizedBox(height: 3),
+                                    Row(
                                       children: [
                                         Icon(
-                                          Icons.logout_rounded,
-                                          size: 14,
-                                          color: colors.expired,
+                                          Icons.access_time_rounded,
+                                          size: 13,
+                                          color: colors.active,
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          context.l10n.checkOut,
+                                          member.localizedElapsedTime(
+                                            context.l10n,
+                                          ),
                                           style: TextStyle(
                                             fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: colors.expired,
+                                            fontWeight: FontWeight.w600,
+                                            color: colors.active,
                                           ),
                                         ),
+                                        if (member.phoneNumber.isNotEmpty) ...[
+                                          Text(
+                                            ' • ',
+                                            style: TextStyle(
+                                              color: Colors.grey.shade400,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          Text(
+                                            member.phoneNumber,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
-                            ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              // Compact check-out button with subtle expired tint
+                              InkWell(
+                                onTap: isCheckingOut
+                                    ? null
+                                    : () => _handleCheckOut(member),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colors.expired.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: colors.expired.withValues(
+                                        alpha: 0.25,
+                                      ),
+                                    ),
+                                  ),
+                                  child: isCheckingOut
+                                      ? SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: colors.expired,
+                                          ),
+                                        )
+                                      : Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.logout_rounded,
+                                              size: 14,
+                                              color: colors.expired,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              context.l10n.checkOut,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: colors.expired,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    )
-                        .animate()
-                        .fadeIn(
-                          delay: (index * 40).ms,
-                          duration: 250.ms,
                         )
+                        .animate()
+                        .fadeIn(delay: (index * 40).ms, duration: 250.ms)
                         .slideY(
                           begin: 0.08,
                           end: 0,
@@ -362,10 +360,7 @@ class _CurrentInsideSheetState extends ConsumerState<CurrentInsideSheet> {
                   4,
                   (_) => const Padding(
                     padding: EdgeInsets.only(bottom: 8),
-                    child: GymShimmerBox(
-                      height: 56,
-                      borderRadius: 14,
-                    ),
+                    child: GymShimmerBox(height: 56, borderRadius: 14),
                   ),
                 ),
               ),

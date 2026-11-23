@@ -39,13 +39,22 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
             // Skip overwriting row awaiting local sync
             continue;
           }
+          final effectivePhotoUrl = (item.photoUrl.present && item.photoUrl.value != null)
+              ? item.photoUrl
+              : Value(existing.photoUrl);
           await (update(localMembers)..where((t) => t.id.equals(item.id.value)))
               .write(
-            item.copyWith(isDirty: const Value(false)),
+            item.copyWith(
+              isDirty: const Value(false),
+              photoUrl: effectivePhotoUrl,
+            ),
           );
         } else {
           await into(localMembers).insert(
-            item.copyWith(isDirty: const Value(false)),
+            item.copyWith(
+              isDirty: const Value(false),
+              photoUrl: item.photoUrl.present ? item.photoUrl : const Value(null),
+            ),
             mode: InsertMode.insertOrReplace,
           );
         }

@@ -112,6 +112,7 @@ class MembersNotifier extends StateNotifier<MembersState> {
                   id: m.id,
                   fullName: m.fullName,
                   phoneNumber: m.phone,
+                  photoUrl: m.photoUrl,
                   activePlanName: m.planName,
                   subscriptionEndDate:
                       m.subscriptionEndDate?.toIso8601String(),
@@ -271,6 +272,7 @@ final localMembersProvider = StreamProvider<List<MemberModel>>((ref) {
             id: m.id,
             fullName: m.fullName,
             phoneNumber: m.phone,
+            photoUrl: m.photoUrl,
             activePlanName: m.planName,
             subscriptionEndDate: m.subscriptionEndDate?.toIso8601String(),
             subscriptionStatus: m.status == 1 ? 'active' : 'expired',

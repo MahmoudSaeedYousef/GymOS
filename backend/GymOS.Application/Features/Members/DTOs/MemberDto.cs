@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace GymOS.Application.Features.Members.DTOs;
 
 public record MemberDto(
@@ -7,4 +9,4 @@ public record MemberDto(
     string? ActivePlanName,
     DateOnly? SubscriptionEndDate,
     string SubscriptionStatus,
-    string? PhotoUrl = null);
+    [property: JsonPropertyName("photoUrl")] string? PhotoUrl = null);

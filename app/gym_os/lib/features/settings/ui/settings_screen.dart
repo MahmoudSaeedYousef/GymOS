@@ -36,7 +36,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   void _handleHeaderTap() {
     final now = DateTime.now();
-    if (_firstTapTime == null || now.difference(_firstTapTime!) > const Duration(seconds: 2)) {
+    if (_firstTapTime == null ||
+        now.difference(_firstTapTime!) > const Duration(seconds: 2)) {
       _firstTapTime = now;
       _tapCount = 1;
     } else {
@@ -485,8 +486,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               children: [
                 Text(
                   l10n.account,
-                  style: const TextStyle(
-                    color: Colors.red,
+                  style: TextStyle(
+                    color: colors.brandPrimary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -543,7 +544,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: _isPopulatingDemoData ? null : _populate30DayDemoData,
+                      onPressed: _isPopulatingDemoData
+                          ? null
+                          : _populate30DayDemoData,
                       icon: _isPopulatingDemoData
                           ? const SizedBox(
                               width: 18,

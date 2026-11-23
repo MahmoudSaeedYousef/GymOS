@@ -12,9 +12,11 @@ public class GetCurrentInsideQueryHandler(IGymDbContext context)
         GetCurrentInsideQuery request,
         CancellationToken cancellationToken)
     {
-        var sessionMinutes = await context.Tenants
+        var tenantDuration = await context.Tenants
             .Select(t => (int?)t.DefaultSessionDurationMinutes)
-            .FirstOrDefaultAsync(cancellationToken) ?? 120;
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var sessionMinutes = tenantDuration is > 0 ? tenantDuration.Value : 180;
 
         var cutoffTime = DateTime.UtcNow.AddMinutes(-sessionMinutes);
 
@@ -26,7 +28,8 @@ public class GetCurrentInsideQueryHandler(IGymDbContext context)
                 a.MemberId,
                 a.Member.FullName,
                 a.Member.PhoneNumber ?? string.Empty,
-                a.CheckInTime
+                a.CheckInTime,
+                a.Member.PhotoUrl
             ))
             .ToListAsync(cancellationToken);
     }

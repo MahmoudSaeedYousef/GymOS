@@ -7,7 +7,23 @@ import '../models/current_inside_member_model.dart';
 final currentInsideProvider =
     StreamProvider.autoDispose<List<CurrentInsideMemberModel>>((ref) {
   final db = ref.watch(appDatabaseProvider);
-  return db.attendanceDao.watchCurrentlyCheckedIn().map((list) {
+  return db.attendanceDao.watchCurrentlyCheckedIn().asyncMap((list) async {
+    final memberIds = list
+        .map((a) => a.memberId)
+        .where((id) => id != null && id.isNotEmpty)
+        .cast<String>()
+        .toSet();
+
+    Map<String, String?> photoMap = {};
+    if (memberIds.isNotEmpty) {
+      final members = await (db.select(db.localMembers)
+            ..where((t) => t.id.isIn(memberIds)))
+          .get();
+      photoMap = {
+        for (final m in members) m.id: m.photoUrl,
+      };
+    }
+
     return list
         .map((a) => CurrentInsideMemberModel(
               recordId: a.id,
@@ -15,6 +31,7 @@ final currentInsideProvider =
               fullName: a.memberName,
               phoneNumber: a.memberPhone ?? '',
               checkInTime: a.checkInTime,
+              photoUrl: a.memberId != null ? photoMap[a.memberId] : null,
             ))
         .toList();
   });

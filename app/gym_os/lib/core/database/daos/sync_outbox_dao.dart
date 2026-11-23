@@ -44,6 +44,45 @@ class SyncOutboxDao extends DatabaseAccessor<AppDatabase>
     return row.read(countExp) ?? 0;
   }
 
+  /// Watches the number of operations marked as permanently 'failed'.
+  Stream<int> watchFailedCount() {
+    final countExp = syncOutbox.id.count();
+    final query = selectOnly(syncOutbox)
+      ..addColumns([countExp])
+      ..where(syncOutbox.status.equals('failed'));
+
+    return query.map((row) => row.read(countExp) ?? 0).watchSingle();
+  }
+
+  /// Returns the current number of failed operations.
+  Future<int> getFailedCount() async {
+    final countExp = syncOutbox.id.count();
+    final query = selectOnly(syncOutbox)
+      ..addColumns([countExp])
+      ..where(syncOutbox.status.equals('failed'));
+
+    final row = await query.getSingle();
+    return row.read(countExp) ?? 0;
+  }
+
+  /// Returns all operations marked as 'failed' ordered FIFO.
+  Future<List<SyncOutboxData>> getFailedOperations() {
+    return (select(syncOutbox)
+          ..where((t) => t.status.equals('failed'))
+          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+        .get();
+  }
+
+  /// Resets all 'failed' operations back to 'pending' with reset retryCount.
+  Future<int> retryFailedOperations() {
+    return (update(syncOutbox)..where((t) => t.status.equals('failed'))).write(
+      const SyncOutboxCompanion(
+        status: Value('pending'),
+        retryCount: Value(0),
+      ),
+    );
+  }
+
   /// Returns pending sync operations ordered strictly FIFO by `id` ASC.
   Future<List<SyncOutboxData>> getPendingOperations({int limit = 20}) {
     return (select(syncOutbox)
@@ -144,13 +183,17 @@ class SyncOutboxDao extends DatabaseAccessor<AppDatabase>
   /// Records a sync failure:
   /// increments `retryCount`, sets `lastError`, and resets status to `'pending'`
   /// if `retryCount < 5`, otherwise marks as permanently `'failed'`.
-  Future<void> markFailed(int id, String errorMessage) async {
+  Future<void> markFailed(
+    int id,
+    String errorMessage, {
+    bool forcePermanentlyFailed = false,
+  }) async {
     await transaction(() async {
       final row = await (select(syncOutbox)..where((t) => t.id.equals(id)))
           .getSingleOrNull();
       if (row != null) {
         final newRetry = row.retryCount + 1;
-        final newStatus = newRetry < 5 ? 'pending' : 'failed';
+        final newStatus = (forcePermanentlyFailed || newRetry >= 5) ? 'failed' : 'pending';
         await (update(syncOutbox)..where((t) => t.id.equals(id))).write(
           SyncOutboxCompanion(
             retryCount: Value(newRetry),

@@ -312,7 +312,7 @@ class _WeeklyActivityChartCardState
                             ? FontWeight.w800
                             : (isSelected ? FontWeight.w600 : FontWeight.w500),
                         color: isSelected
-                            ? colors.brandPrimary
+                            ? colors.accentText
                             : (isToday ? colors.textPrimary : colors.textSecondary),
                       ),
                       maxLines: 1,
@@ -635,7 +635,7 @@ class _MetricPillToggle extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? colors.brandPrimary : colors.textSecondary,
+                  color: isSelected ? colors.accentText : colors.textSecondary,
                 ),
               ),
             ],

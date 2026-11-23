@@ -57,3 +57,9 @@ final syncStateProvider = StreamProvider<SyncState>((ref) {
   final engine = ref.watch(syncEngineProvider);
   return engine.stateStream;
 });
+
+/// Stream provider watching the number of permanently failed sync operations.
+final syncFailedCountProvider = StreamProvider<int>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return db.syncOutboxDao.watchFailedCount();
+});

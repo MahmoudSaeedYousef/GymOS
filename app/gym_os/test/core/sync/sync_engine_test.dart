@@ -865,5 +865,88 @@ void main() {
         expect(allPayments.first.isDirty, isFalse);
       },
     );
+
+    test(
+      'pullChanges correctly saves photoUrl and preserves existing photoUrl when server omits it',
+      () async {
+        // 1. Existing local member with a photoUrl
+        await db.into(db.localMembers).insert(
+              LocalMembersCompanion.insert(
+                id: 'mem-photo-1',
+                fullName: 'Existing Member',
+                phone: '0100000001',
+                photoUrl: const Value('https://example.com/existing.jpg'),
+                status: const Value(1),
+                updatedAt: DateTime.now(),
+                isDirty: const Value(false),
+              ),
+            );
+
+        // 2. Mock GET /api/gym/members returning mem-photo-1 without photoUrl (omitted/null),
+        // and mem-photo-2 with photoUrl
+        httpAdapter.handler = (options) {
+          if (options.path.contains('/api/gym/members')) {
+            return ResponseBody.fromString(
+              jsonEncode({
+                'items': [
+                  {
+                    'id': 'mem-photo-1',
+                    'fullName': 'Existing Member Updated',
+                    'phoneNumber': '0100000001',
+                    'subscriptionStatus': 'active',
+                    // photoUrl omitted
+                  },
+                  {
+                    'id': 'mem-photo-2',
+                    'fullName': 'New Member With Photo',
+                    'phoneNumber': '0100000002',
+                    'photoUrl': 'https://example.com/new_member.jpg',
+                    'subscriptionStatus': 'active',
+                  },
+                ],
+              }),
+              200,
+              headers: {
+                Headers.contentTypeHeader: [Headers.jsonContentType],
+              },
+            );
+          }
+          if (options.path.contains('/api/attendance') ||
+              options.path.contains('/api/dashboard/stats')) {
+            return ResponseBody.fromString(
+              '[]',
+              200,
+              headers: {
+                Headers.contentTypeHeader: [Headers.jsonContentType],
+              },
+            );
+          }
+          return ResponseBody.fromString(
+            '{"succeeded": true}',
+            200,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          );
+        };
+
+        // 3. Run syncAll (pullChanges)
+        await syncEngine.syncAll();
+
+        // 4. Verify mem-photo-1 still has existing photoUrl preserved
+        final m1 = await (db.select(db.localMembers)
+              ..where((t) => t.id.equals('mem-photo-1')))
+            .getSingle();
+        expect(m1.fullName, 'Existing Member Updated');
+        expect(m1.photoUrl, 'https://example.com/existing.jpg');
+
+        // 5. Verify mem-photo-2 has newly pulled photoUrl
+        final m2 = await (db.select(db.localMembers)
+              ..where((t) => t.id.equals('mem-photo-2')))
+            .getSingle();
+        expect(m2.fullName, 'New Member With Photo');
+        expect(m2.photoUrl, 'https://example.com/new_member.jpg');
+      },
+    );
   });
 }

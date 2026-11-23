@@ -9,8 +9,8 @@ final dioProvider = Provider<Dio>((ref) {
       // baseUrl: 'http://10.0.2.2:5158',
       // baseUrl: 'http://127.0.0.1:5158',
       baseUrl: 'https://gym.orderly365.top',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      connectTimeout: const Duration(seconds: 100),
+      receiveTimeout: const Duration(seconds: 100),
     ),
   );
   // adb -d reverse tcp:5158 tcp:5158

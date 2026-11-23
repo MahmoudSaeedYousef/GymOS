@@ -42,9 +42,11 @@ public class GetDashboardStatsQueryHandler(IGymDbContext context) : IRequestHand
             .Where(p => p.PaymentDate >= startOfMonth && p.IsDropIn)
             .SumAsync(p => p.Amount, cancellationToken);
         
-        var sessionMinutes = await context.Tenants
+        var tenantDuration = await context.Tenants
             .Select(t => (int?)t.DefaultSessionDurationMinutes)
-            .FirstOrDefaultAsync(cancellationToken) ?? 120;
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var sessionMinutes = tenantDuration is > 0 ? tenantDuration.Value : 180;
 
         var cutoffTime = now.AddMinutes(-sessionMinutes);
 
