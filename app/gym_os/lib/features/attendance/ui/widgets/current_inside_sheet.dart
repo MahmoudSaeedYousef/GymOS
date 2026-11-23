@@ -212,68 +212,29 @@ class _CurrentInsideSheetState extends ConsumerState<CurrentInsideSheet> {
                     );
 
                     return Container(
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? colors.surfaceBackground
-                            : colors.brandPrimary.withValues(alpha: 0.03),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.grey.shade800
-                              : Colors.grey.shade200,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(AppSpacing.sm + 2),
-                      child: Row(
-                        children: [
-                          MemberAvatar(
-                            photoUrl: member.photoUrl,
-                            fullName: member.fullName,
-                            radius: 20,
-                            backgroundColor:
-                                colors.brandPrimary.withValues(alpha: 0.1),
-                            foregroundColor: colors.brandPrimary,
-                            fontSize: 16,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? colors.surfaceBackground
+                                : colors.brandPrimary.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade200,
+                            ),
                           ),
                           padding: const EdgeInsets.all(AppSpacing.sm + 2),
                           child: Row(
                             children: [
-                              // CircleAvatar(
-                              //   radius: 20,
-                              //   backgroundColor:
-                              //       colors.brandPrimary.withValues(alpha: 0.1),
-                              //   child: Text(
-                              //     member.fullName.isNotEmpty
-                              //         ? member.fullName[0]
-                              //         : '?',
-                              //     style: TextStyle(
-                              //       color: colors.brandPrimary,
-                              //       fontWeight: FontWeight.bold,
-                              //       fontSize: 16,
-                              //     ),
-                              //   ),
-                              // ),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(13),
-                                child: Transform.flip(
-                                  flipX: isRtl,
-                                  child: Image.asset(
-                                    'assets/icons/app_icon.png',
-                                    fit: BoxFit.cover,
-                                    color: !isLight
-                                        ? Color.lerp(
-                                            Colors.white,
-                                            colors.brandPrimary,
-                                            0.12,
-                                          )!
-                                        : null,
-                                    colorBlendMode: !isLight
-                                        ? BlendMode.dstATop
-                                        : null,
-                                    semanticLabel:
-                                        context.l10n.appLogoSemanticLabel,
-                                  ),
+                              MemberAvatar(
+                                photoUrl: member.photoUrl,
+                                fullName: member.fullName,
+                                radius: 20,
+                                backgroundColor: colors.brandPrimary.withValues(
+                                  alpha: 0.1,
                                 ),
+                                foregroundColor: colors.brandPrimary,
+                                fontSize: 16,
                               ),
                               const SizedBox(width: AppSpacing.sm + 2),
                               Expanded(
