@@ -50,6 +50,10 @@ public class UpdateMemberCommandHandler(
         member.FullName = cleanFullName;
         member.PhoneNumber = cleanPhoneNumber;
         member.UserName = $"{tenantId}_{cleanPhoneNumber}";
+        if (request.Gender.HasValue)
+        {
+            member.Gender = request.Gender.Value;
+        }
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -75,7 +79,8 @@ public class UpdateMemberCommandHandler(
             latestSub?.PlanName,
             latestSub?.EndDate,
             subscriptionStatus,
-            member.PhotoUrl);
+            member.PhotoUrl,
+            member.Gender);
 
         return UpdateMemberResult.Success(memberDto);
     }

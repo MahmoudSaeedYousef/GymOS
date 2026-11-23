@@ -6,11 +6,12 @@ namespace GymOS.Application.Features.Members.Commands.CreateMember;
 public record CreateMemberCommand(
     string FullName,
     string PhoneNumber,
-    Guid? PlanId,
-    DateOnly? StartDate,
+    Guid? PlanId = null,
+    DateOnly? StartDate = null,
     PaymentMethod Method = PaymentMethod.Cash,
     decimal? AmountPaid = null,
     Guid? Id = null,
     Guid? ClientId = null,
     DateTime? OccurredAtUtc = null,
-    DateTime? CreatedAt = null) : IRequest<string>;
+    DateTime? CreatedAt = null,
+    Gender Gender = Gender.Unspecified) : IRequest<string>;

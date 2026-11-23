@@ -41,6 +41,7 @@ public class CreateMemberCommandHandler(
             PhoneNumber = request.PhoneNumber,
             FullName = request.FullName,
             Type = UserType.Member,
+            Gender = request.Gender,
             SubscriptionEndDate = end?.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
             TenantId = new Guid(tenantId)
         };
