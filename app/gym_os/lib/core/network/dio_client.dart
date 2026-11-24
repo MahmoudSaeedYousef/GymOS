@@ -10,10 +10,10 @@ final dioProvider = Provider<Dio>((ref) {
       // baseUrl: 'http://127.0.0.1:5158',
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'https://gym.orderly365.top',
+        defaultValue: 'https://dev-gym.orderly365.top',
       ),
-      connectTimeout: const Duration(seconds: 100),
-      receiveTimeout: const Duration(seconds: 100),
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
     ),
   );
   // adb -d reverse tcp:5158 tcp:5158

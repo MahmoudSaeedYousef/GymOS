@@ -118,3 +118,17 @@ The application strictly enforces official Flutter Localization (`flutter_locali
 - **Check `git diff` First:** Before editing any file, inspect `git status` and `git diff` to see uncommitted manual changes made by the user, and preserve 100% of them.
 - **No Unrequested Dependency/Native Changes:** Do NOT modify `pubspec.yaml`, `ios/`, or `android/` unless explicitly requested.
 - **Verification Gate:** Always run `dotnet build GymOS.slnx && dotnet test GymOS.slnx` (Backend) or `flutter analyze && flutter test` (Mobile) with 0 errors before reporting completion.
+
+## Client Protection & Zero-Downtime Guardrails (Production Safety)
+
+Production (`main` -> `https://gym.orderly365.top` / `gymos_prod`) serves live client builds, while active development targets Staging (`develop` -> `https://dev-gym.orderly365.top` / `gymos_dev`). Every change MUST obey these three rules:
+
+1. **Additive-Only API Contracts (Backward Compatibility):**
+   - Never delete, rename, or change the data type of existing fields in .NET Request/Response DTOs.
+   - Always add new DTO fields as `nullable` (`?`) with safe default behavior so older deployed mobile APKs keep working seamlessly without JSON deserialization failures.
+2. **Non-Breaking / Zero-Lock EF Core Migrations:**
+   - Any new column added to PostgreSQL entities must be `nullable` (`?`) or define an explicit `HasDefaultValue(...)` / `HasDefaultValueSql(...)` so migrations execute instantaneously without table locks or null-constraint errors.
+   - Never drop or rename active columns in a single deployment step.
+3. **Branch Isolation & Hotfix Protocol (`develop` vs `main`):**
+   - Route all routine features and fixes to `develop` (never commit untested code directly to `main`).
+   - **Emergency Hotfixes:** When a live client issue requires an immediate fix while `develop` holds unfinished work, create a `hotfix/<issue>` branch from `main`, merge via PR into `main`, and immediately sync back into `develop` (`git checkout develop && git merge main`).
