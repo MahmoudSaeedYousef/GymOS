@@ -8,6 +8,7 @@ class GymTextField extends StatefulWidget {
   final String label;
   final String? hint;
   final IconData? prefixIcon;
+  final Widget? suffixIcon;
   final bool isPassword;
   final int? maxLines;
   final TextInputType? keyboardType;
@@ -20,6 +21,7 @@ class GymTextField extends StatefulWidget {
     required this.label,
     this.hint,
     this.prefixIcon,
+    this.suffixIcon,
     this.isPassword = false,
     this.maxLines = 1,
     this.keyboardType,
@@ -115,6 +117,7 @@ class _GymTextFieldState extends State<GymTextField> {
                       color: hasError ? colors.expired : colors.textSecondary,
                     )
                   : null,
+              suffixIcon: widget.suffixIcon,
               filled: false,
               border: InputBorder.none,
               enabledBorder: InputBorder.none,

@@ -71,6 +71,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get passwordRequired => 'مطلوب إدخال كلمة المرور';
 
   @override
+  String get showPassword => 'إظهار كلمة المرور';
+
+  @override
+  String get hidePassword => 'إخفاء كلمة المرور';
+
+  @override
+  String get quickSettings => 'إعدادات سريعة';
+
+  @override
+  String get serverStatus => 'حالة الخادم';
+
+  @override
+  String get serverOnline => 'متصل';
+
+  @override
   String get loginButton => 'تسجيل الدخول';
 
   @override

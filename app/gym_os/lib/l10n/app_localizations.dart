@@ -218,6 +218,36 @@ abstract class AppLocalizations {
   /// **'مطلوب إدخال كلمة المرور'**
   String get passwordRequired;
 
+  /// No description provided for @showPassword.
+  ///
+  /// In ar, this message translates to:
+  /// **'إظهار كلمة المرور'**
+  String get showPassword;
+
+  /// No description provided for @hidePassword.
+  ///
+  /// In ar, this message translates to:
+  /// **'إخفاء كلمة المرور'**
+  String get hidePassword;
+
+  /// No description provided for @quickSettings.
+  ///
+  /// In ar, this message translates to:
+  /// **'إعدادات سريعة'**
+  String get quickSettings;
+
+  /// No description provided for @serverStatus.
+  ///
+  /// In ar, this message translates to:
+  /// **'حالة الخادم'**
+  String get serverStatus;
+
+  /// No description provided for @serverOnline.
+  ///
+  /// In ar, this message translates to:
+  /// **'متصل'**
+  String get serverOnline;
+
   /// No description provided for @loginButton.
   ///
   /// In ar, this message translates to:

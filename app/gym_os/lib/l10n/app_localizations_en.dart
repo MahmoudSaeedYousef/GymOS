@@ -71,6 +71,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get passwordRequired => 'Password is required';
 
   @override
+  String get showPassword => 'Show password';
+
+  @override
+  String get hidePassword => 'Hide password';
+
+  @override
+  String get quickSettings => 'Quick Settings';
+
+  @override
+  String get serverStatus => 'Server Status';
+
+  @override
+  String get serverOnline => 'Connected';
+
+  @override
   String get loginButton => 'Sign In';
 
   @override

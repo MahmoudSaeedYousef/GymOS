@@ -8,6 +8,7 @@ import 'package:gym_os/core/ui/atoms/gym_card.dart';
 import 'package:gym_os/core/ui/atoms/gym_text_field.dart';
 import 'package:gym_os/features/auth/ui/widgets/environment_switcher_sheet.dart';
 import 'package:gym_os/features/auth/ui/widgets/login_success_overlay.dart';
+import 'package:gym_os/features/auth/ui/widgets/quick_settings_sheet.dart';
 import '../../../../core/l10n/l10n_extension.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -25,34 +26,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
 
-  // Future<void> _handleLogin() async {
-  //   if (_phoneController.text.isEmpty) {
-  //     _phoneController.text = '01012345679';
-  //     _passwordController.text = 'StrongPassword123!';
-  //   }
-  //   if (!_formKey.currentState!.validate()) return;
-
-  //   setState(() => _isLoading = true);
-
-  //   try {
-  //     await ref
-  //         .read(authProvider.notifier)
-  //         .login(_phoneController.text.trim(), _passwordController.text);
-  //   } catch (e) {
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         const SnackBar(
-  //           content: Text('رقم الهاتف أو كلمة المرور غير صحيحة'),
-  //           backgroundColor: Colors.red,
-  //           behavior: SnackBarBehavior.floating,
-  //         ),
-  //       );
-  //     }
-  //   } finally {
-  //     if (mounted) setState(() => _isLoading = false);
-  //   }
-  // }
   Future<void> _handleLogin() async {
     if (_phoneController.text.isEmpty) {
       _phoneController.text = '01012345679';
@@ -102,9 +77,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final colors = context.gymColors;
     final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final disableAnimations =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
     // 1. Logo (88 dp centered with semantic label, long-press to switch environment)
     final envState = ref.watch(environmentProvider);
     Widget logoWidget = GestureDetector(
@@ -112,53 +89,97 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(
-            'assets/icons/app_icon.png',
-            width: 88,
-            height: 88,
-            fit: BoxFit.contain,
-            semanticLabel: l10n.appLogoSemanticLabel,
+          Container(
+            width: 130,
+            height: 130,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDark ? colors.surfaceLevel1 : colors.surfaceLevel0,
+              border: Border.all(
+                color: isDark
+                    ? colors.brandPrimary.withValues(alpha: 0.25)
+                    : colors.surfaceBorder,
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? colors.brandPrimary.withValues(alpha: 0.18)
+                      : Colors.black.withValues(alpha: 0.05),
+                  blurRadius: isDark ? 28 : 14,
+                  spreadRadius: isDark ? 2 : 0,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(AppSpacing.xxs),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(60),
+              child: Transform.flip(
+                flipX: isRtl,
+                child: Image.asset(
+                  'assets/icons/app_icon.png',
+                  fit: BoxFit.cover,
+                  color: !isLight
+                      ? Color.lerp(Colors.white, colors.brandPrimary, 0.12)!
+                      : null,
+                  colorBlendMode: !isLight ? BlendMode.dstATop : null,
+                  semanticLabel: context.l10n.appLogoSemanticLabel,
+                ),
+              ),
+            ),
           ),
           if (kDebugMode ||
               envState.environment != ServerEnvironment.production) ...[
-            const SizedBox(height: AppSpacing.xs),
-            InkWell(
-              onTap: () => showEnvironmentSwitcherSheet(context),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: colors.surfaceLevel2,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                  border: Border.all(color: colors.surfaceBorder, width: 0.5),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color:
-                            envState.environment == ServerEnvironment.production
-                            ? colors.brandPrimary
-                            : colors.warning,
+            const SizedBox(height: AppSpacing.sm),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => {}, // showEnvironmentSwitcherSheet(context),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceLevel2,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                    border: Border.all(color: colors.surfaceBorder, width: 0.8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      envState.environment.label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textSecondary,
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color:
+                              envState.environment ==
+                                  ServerEnvironment.production
+                              ? colors.brandPrimary
+                              : colors.warning,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        envState.environment.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -227,7 +248,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               label: l10n.password,
               hint: l10n.passwordHint,
               prefixIcon: Icons.lock_outline_rounded,
-              isPassword: true,
+              isPassword: !_isPasswordVisible,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isPasswordVisible
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  size: 20,
+                  color: colors.textSecondary,
+                ),
+                tooltip: _isPasswordVisible
+                    ? l10n.hidePassword
+                    : l10n.showPassword,
+                onPressed: () {
+                  setState(() {
+                    _isPasswordVisible = !_isPasswordVisible;
+                  });
+                },
+              ),
               validator: (v) =>
                   (v == null || v.isEmpty) ? l10n.passwordRequired : null,
             ),
@@ -307,29 +345,83 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ],
           ),
         ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsetsDirectional.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.md,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(child: logoWidget),
-                    const SizedBox(height: AppSpacing.md),
-                    titleWidget,
-                    const SizedBox(height: AppSpacing.xl),
-                    cardWidget,
-                  ],
+        child: Stack(
+          children: [
+            // Main content
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsetsDirectional.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.md,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(child: logoWidget),
+                        const SizedBox(height: AppSpacing.md),
+                        titleWidget,
+                        const SizedBox(height: AppSpacing.xl),
+                        cardWidget,
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
+
+            // Top Quick-Settings Action Button inside SafeArea
+            PositionedDirectional(
+              top: 0,
+              end: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(
+                    top: AppSpacing.sm,
+                    end: AppSpacing.md,
+                  ),
+                  child: Semantics(
+                    button: true,
+                    label: l10n.quickSettings,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => showQuickSettingsSheet(context),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: colors.surfaceLevel1.withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: colors.surfaceBorder,
+                              width: 1.0,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.settings_outlined,
+                            size: 20,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
