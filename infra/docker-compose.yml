@@ -42,11 +42,36 @@ services:
     networks:
       - gymos-internal
 
+  api-dev:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: gymos-api-dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5001:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      RUN_MIGRATIONS_ON_STARTUP: "true"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB_DEV};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Include Error Detail=true"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER_DEV}
+      Jwt__Audience: ${JWT_AUDIENCE}
+    volumes:
+      - gymos_uploads_dev:/app/wwwroot/uploads
+    networks:
+      - gymos-internal
+
 volumes:
   gymos_pgdata:
     name: gymos_pgdata
   gymos_uploads:
     name: gymos_uploads
+  gymos_uploads_dev:
+    name: gymos_uploads_dev
 
 networks:
   gymos-internal:

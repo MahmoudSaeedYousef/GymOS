@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
     paths:
       - "backend/**"
       - "infra/**"
@@ -11,14 +12,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  # ── Production: main → gymos-api (port 5050) ──────────────────────────────
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to VPS
+      - name: Deploy Production to VPS
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
@@ -34,14 +37,15 @@ jobs:
             git reset --hard origin/main
 
             cd /opt/gymos/infra
-            docker compose up -d --build
-            docker compose ps
+            # Rebuild and restart ONLY the production service; leave api-dev untouched
+            docker compose up -d --build --no-deps api
+            docker compose ps api
 
-            echo "Waiting for GymOS API on port 5050..."
+            echo "Waiting for GymOS API (prod) on port 5050..."
             for i in $(seq 1 20); do
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5050/ || true)
               if [ "$STATUS" != "000" ]; then
-                echo "GymOS API is up and responding (HTTP $STATUS)!"
+                echo "GymOS API (prod) is up and responding (HTTP $STATUS)!"
                 exit 0
               fi
               sleep 3
@@ -49,5 +53,49 @@ jobs:
 
             echo "API did not respond in time. Recent logs:"
             docker compose logs --tail=50 api
+            exit 1
+          EOF
+
+  # ── Staging: develop → gymos-api-dev (port 5001) ─────────────────────────
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy Staging to VPS
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519_gymos
+          chmod 600 ~/.ssh/id_ed25519_gymos
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/id_ed25519_gymos ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            cd /opt/gymos
+
+            git fetch origin develop
+            git reset --hard origin/develop
+
+            cd /opt/gymos/infra
+            # Rebuild and restart ONLY the staging service; leave api (prod) untouched
+            docker compose up -d --build --no-deps api-dev
+            docker compose ps api-dev
+
+            echo "Waiting for GymOS API (staging) on port 5001..."
+            for i in $(seq 1 20); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5001/ || true)
+              if [ "$STATUS" != "000" ]; then
+                echo "GymOS API (staging) is up and responding (HTTP $STATUS)!"
+                exit 0
+              fi
+              sleep 3
+            done
+
+            echo "API-dev did not respond in time. Recent logs:"
+            docker compose logs --tail=50 api-dev
             exit 1
           EOF

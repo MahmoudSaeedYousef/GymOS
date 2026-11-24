@@ -1,7 +1,7 @@
 .PHONY: help \
 	be-build be-test be-clean \
 	app-get app-l10n app-gen app-analyze app-test app-check \
-	android-clean android-apk android-release \
+	android-clean android-apk android-dev android-release \
 	ios-clean ios-pods \
 	verify pr
 
@@ -66,6 +66,8 @@ android-clean:
 
 android-apk:
 	flutter build apk --release --target-platform android-arm64 --split-debug-info=build/app/intermediates/symbols/arm64
+android-dev:
+	flutter build apk --release --target-platform android-arm64 --dart-define=API_BASE_URL=https://dev-gym.orderly365.top
 android-open:
 	open build/app/outputs/flutter-apk
 android-release: android-clean app-get android-apk
