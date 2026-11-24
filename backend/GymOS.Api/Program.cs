@@ -34,6 +34,17 @@ builder.Services.AddProblemDetails();
 
 builder.Services.AddDbContext<GymDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Register ITenantContext / TenantContext as Scoped (one per HTTP request / DI scope)
+builder.Services.AddScoped<ITenantContext, TenantContext>();
+
+// Register the write-guard interceptor as Scoped so it can depend on ITenantContext
+builder.Services.AddScoped<TenantSaveChangesInterceptor>();
+
+builder.Services.AddDbContext<GymDbContext>((sp, options) =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.AddInterceptors(sp.GetRequiredService<TenantSaveChangesInterceptor>());
+});
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<GymDbContext>()
@@ -99,6 +110,7 @@ app.UseExceptionHandler();     // IExceptionHandler pipeline (GlobalExceptionHan
 app.UseStaticFiles();
 app.UseCorrelationId();        // Must come early so LogContext is enriched for all subsequent middleware
 app.UseAuthentication();
+app.UseTenantIsolation(); // Must be after UseAuthentication, before UseAuthorization
 app.UseAuthorization();
 app.UseIdempotency();
 
