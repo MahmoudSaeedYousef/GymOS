@@ -372,5 +372,22 @@
   "photoSourceGallery": "المعرض",
   "delete": "حذف",
   "singleSession": "حصة منفردة",
-  "singleSessionToday": "حصة منفردة • اليوم"
+  "singleSessionToday": "حصة منفردة • اليوم",
+  "serverEnvironment": "بيئة الخادم",
+  "selectServerEnvironment": "اختر بيئة الخادم",
+  "envStaging": "تطوير (Staging)",
+  "envProduction": "الإنتاج (Production)",
+  "envLocal": "محلي (Local)",
+  "envCustom": "مخصص (Custom URL)",
+  "customServerUrl": "عنوان الخادم المخصص",
+  "customUrlHint": "http://10.0.2.2:5158 أو النطاق",
+  "environmentSwitched": "تم تغيير بيئة الخادم إلى: {env}",
+  "@environmentSwitched": {
+    "placeholders": {
+      "env": {
+        "type": "String"
+      }
+    }
+  },
+  "invalidUrl": "عنوان URL غير صالح"
 }

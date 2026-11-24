@@ -138,17 +138,23 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
             .OrderBy(u => u.Id)
             .ToListAsync(cancellationToken);
 
-        const int targetMemberCount = 100;
+        const int targetMemberCount = 60;
         var newMembersAdded = 0;
         if (members.Count < targetMemberCount)
         {
-            var firstNames = new[]
+            var maleFirstNames = new[]
             {
-                "أحمد", "محمد", "محمود", "كريم", "عمر", "يوسف", "سارة", "نور", "مريم", "خالد",
-                "علي", "إبراهيم", "طارق", "سمير", "شريف", "علاء", "مصطفى", "حسام", "هشام", "وليد",
-                "ياسين", "زياد", "حمزة", "بلال", "آسر", "سلمى", "ياسمين", "فريدة", "هند", "ندى",
-                "أميرة", "رنا", "دينا", "منى", "آية", "حازم", "عمرو", "تامر", "رامي", "هاني",
-                "ماجد", "وائل", "أيمن", "معتز", "شادي", "أدهم", "فارس", "مروان", "سيف", "باسل"
+                "أحمد", "محمد", "محمود", "كريم", "عمر", "يوسف", "خالد", "علي", "إبراهيم", "طارق",
+                "سمير", "شريف", "علاء", "مصطفى", "حسام", "هشام", "وليد", "ياسين", "زياد", "حمزة",
+                "بلال", "آسر", "حازم", "عمرو", "تامر", "رامي", "هاني", "ماجد", "وائل", "أيمن",
+                "معتز", "شادي", "أدهم", "فارس", "مروان", "سيف", "باسل"
+            };
+
+            var femaleFirstNames = new[]
+            {
+                "سارة", "نور", "مريم", "سلمى", "ياسمين", "فريدة", "هند", "ندى", "أميرة", "رنا",
+                "دينا", "منى", "آية", "حبيبة", "ملك", "شهد", "روان", "جنا", "ليلى", "فاطمة",
+                "خديجة", "عائشة", "زينب", "ريم", "هبة", "إسراء", "دعاء", "ريهام", "نوران", "مروة"
             };
 
             var middleOrLastNames = new[]
@@ -172,7 +178,11 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
             while (members.Count < targetMemberCount && attempts < 2000)
             {
                 attempts++;
-                var f = firstNames[randomGen.Next(firstNames.Length)];
+                var isFemale = (members.Count % 2 == 1);
+                var gender = isFemale ? Gender.Female : Gender.Male;
+                var f = isFemale
+                    ? femaleFirstNames[randomGen.Next(femaleFirstNames.Length)]
+                    : maleFirstNames[randomGen.Next(maleFirstNames.Length)];
                 var m = middleOrLastNames[randomGen.Next(middleOrLastNames.Length)];
                 var l = middleOrLastNames[randomGen.Next(middleOrLastNames.Length)];
                 var fullName = $"{f} {m} {l}";
@@ -196,6 +206,7 @@ public class GymHistorySeeder(GymDbContext dbContext) : IGymHistorySeeder
                     PhoneNumber = phoneNum,
                     UserName = $"{phoneNum}_{suffix}",
                     NormalizedUserName = $"{phoneNum}_{suffix}".ToUpperInvariant(),
+                    Gender = gender,
                     IsGuest = false
                 };
 

@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gym_os/core/network/environment_store.dart';
 import 'package:gym_os/core/ui/atoms/gym_button.dart';
 import 'package:gym_os/core/ui/atoms/gym_card.dart';
 import 'package:gym_os/core/ui/atoms/gym_text_field.dart';
+import 'package:gym_os/features/auth/ui/widgets/environment_switcher_sheet.dart';
 import 'package:gym_os/features/auth/ui/widgets/login_success_overlay.dart';
 import '../../../../core/l10n/l10n_extension.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -54,6 +57,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (_phoneController.text.isEmpty) {
       _phoneController.text = '01012345679';
       _passwordController.text = 'StrongPassword123!';
+    } else if (_phoneController.text == '1') {
+      _phoneController.text = '01012345678';
+      _passwordController.text = 'StrongPassword123!';
+    } else if (_phoneController.text == '2') {
+      _phoneController.text = '01012345677';
+      _passwordController.text = 'StrongPassword123!';
     }
     if (!_formKey.currentState!.validate()) return;
 
@@ -96,13 +105,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final disableAnimations =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
-    // 1. Logo (88 dp centered with semantic label)
-    Widget logoWidget = Image.asset(
-      'assets/icons/app_icon.png',
-      width: 88,
-      height: 88,
-      fit: BoxFit.contain,
-      semanticLabel: l10n.appLogoSemanticLabel,
+    // 1. Logo (88 dp centered with semantic label, long-press to switch environment)
+    final envState = ref.watch(environmentProvider);
+    Widget logoWidget = GestureDetector(
+      onLongPress: () => showEnvironmentSwitcherSheet(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(
+            'assets/icons/app_icon.png',
+            width: 88,
+            height: 88,
+            fit: BoxFit.contain,
+            semanticLabel: l10n.appLogoSemanticLabel,
+          ),
+          if (kDebugMode ||
+              envState.environment != ServerEnvironment.production) ...[
+            const SizedBox(height: AppSpacing.xs),
+            InkWell(
+              onTap: () => showEnvironmentSwitcherSheet(context),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surfaceLevel2,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  border: Border.all(color: colors.surfaceBorder, width: 0.5),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color:
+                            envState.environment == ServerEnvironment.production
+                            ? colors.brandPrimary
+                            : colors.warning,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      envState.environment.label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
 
     // 2. Title and Subtitle
