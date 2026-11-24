@@ -11,8 +11,26 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
+
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
+    .CreateBootstrapLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, services, cfg) => cfg
+    .ReadFrom.Configuration(ctx.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {CorrelationId} {TenantId} {Message:lj}{NewLine}{Exception}"));
+
+// Global exception handler (IExceptionHandler + ProblemDetails)
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 builder.Services.AddDbContext<GymDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -76,11 +94,15 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<GymDbContext>();
     await dbContext.Database.MigrateAsync();
 }
+
+app.UseExceptionHandler();     // IExceptionHandler pipeline (GlobalExceptionHandler)
 app.UseStaticFiles();
+app.UseCorrelationId();        // Must come early so LogContext is enriched for all subsequent middleware
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseIdempotency();
 
+app.MapHealthEndpoints();      // GET /health  — anonymous, no sensitive details
 app.MapAuthEndpoints();
 app.MapGymEndpoints();
 app.MapAttendanceEndpoints();
