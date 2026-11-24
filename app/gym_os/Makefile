@@ -100,4 +100,5 @@ be-clean:
 verify: be-test app-check
 
 pr:
-	gh pr create --web
+	gh pr create --base develop --web
+	 
