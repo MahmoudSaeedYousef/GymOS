@@ -722,4 +722,36 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get singleSessionToday => 'حصة منفردة • اليوم';
+
+  @override
+  String get serverEnvironment => 'بيئة الخادم';
+
+  @override
+  String get selectServerEnvironment => 'اختر بيئة الخادم';
+
+  @override
+  String get envStaging => 'تطوير (Staging)';
+
+  @override
+  String get envProduction => 'الإنتاج (Production)';
+
+  @override
+  String get envLocal => 'محلي (Local)';
+
+  @override
+  String get envCustom => 'مخصص (Custom URL)';
+
+  @override
+  String get customServerUrl => 'عنوان الخادم المخصص';
+
+  @override
+  String get customUrlHint => 'http://10.0.2.2:5158 أو النطاق';
+
+  @override
+  String environmentSwitched(String env) {
+    return 'تم تغيير بيئة الخادم إلى: $env';
+  }
+
+  @override
+  String get invalidUrl => 'عنوان URL غير صالح';
 }

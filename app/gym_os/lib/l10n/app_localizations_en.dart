@@ -722,4 +722,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get singleSessionToday => 'Single Session • Today';
+
+  @override
+  String get serverEnvironment => 'Server Environment';
+
+  @override
+  String get selectServerEnvironment => 'Select Server Environment';
+
+  @override
+  String get envStaging => 'Staging';
+
+  @override
+  String get envProduction => 'Production';
+
+  @override
+  String get envLocal => 'Local (Emulator)';
+
+  @override
+  String get envCustom => 'Custom URL';
+
+  @override
+  String get customServerUrl => 'Custom Server URL';
+
+  @override
+  String get customUrlHint => 'http://10.0.2.2:5158 or domain';
+
+  @override
+  String environmentSwitched(String env) {
+    return 'Server environment switched to: $env';
+  }
+
+  @override
+  String get invalidUrl => 'Invalid URL';
 }

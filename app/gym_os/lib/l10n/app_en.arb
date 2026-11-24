@@ -290,5 +290,22 @@
   "photoSourceGallery": "Gallery",
   "delete": "Delete",
   "singleSession": "Single Session",
-  "singleSessionToday": "Single Session • Today"
+  "singleSessionToday": "Single Session • Today",
+  "serverEnvironment": "Server Environment",
+  "selectServerEnvironment": "Select Server Environment",
+  "envStaging": "Staging",
+  "envProduction": "Production",
+  "envLocal": "Local (Emulator)",
+  "envCustom": "Custom URL",
+  "customServerUrl": "Custom Server URL",
+  "customUrlHint": "http://10.0.2.2:5158 or domain",
+  "environmentSwitched": "Server environment switched to: {env}",
+  "@environmentSwitched": {
+    "placeholders": {
+      "env": {
+        "type": "String"
+      }
+    }
+  },
+  "invalidUrl": "Invalid URL"
 }

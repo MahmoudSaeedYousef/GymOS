@@ -127,10 +127,19 @@ public class GymHistorySeederTests
             .ToListAsync();
         Assert.Equal(20, originalMembersInDb.Count);
 
-        // Check if extra members were added to reach >= 25
-        var totalMembers = await context.Users.IgnoreQueryFilters().Where(u => u.TenantId == gymId && u.Type == UserType.Member && !u.IsGuest).CountAsync();
-        Assert.True(totalMembers >= 25);
+        // Check if extra members were added to reach 60
+        var allMembers = await context.Users.IgnoreQueryFilters().Where(u => u.TenantId == gymId && u.Type == UserType.Member && !u.IsGuest).ToListAsync();
+        var totalMembers = allMembers.Count;
+        Assert.Equal(60, totalMembers);
         Assert.Equal(result.MembersCount, totalMembers);
+
+        // Verify realistic gender distribution among newly added members
+        var newlyAddedMembers = allMembers.Where(u => !existingMembers.Select(m => m.Id).Contains(u.Id)).ToList();
+        Assert.Equal(40, newlyAddedMembers.Count);
+        var maleCount = newlyAddedMembers.Count(u => u.Gender == Gender.Male);
+        var femaleCount = newlyAddedMembers.Count(u => u.Gender == Gender.Female);
+        Assert.Equal(20, maleCount);
+        Assert.Equal(20, femaleCount);
 
         // 2. Old transactions were cleaned
         Assert.DoesNotContain(context.Subscriptions.IgnoreQueryFilters(), s => s.Id == oldSub.Id);

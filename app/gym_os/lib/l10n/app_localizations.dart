@@ -1441,6 +1441,66 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'حصة منفردة • اليوم'**
   String get singleSessionToday;
+
+  /// No description provided for @serverEnvironment.
+  ///
+  /// In ar, this message translates to:
+  /// **'بيئة الخادم'**
+  String get serverEnvironment;
+
+  /// No description provided for @selectServerEnvironment.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر بيئة الخادم'**
+  String get selectServerEnvironment;
+
+  /// No description provided for @envStaging.
+  ///
+  /// In ar, this message translates to:
+  /// **'تطوير (Staging)'**
+  String get envStaging;
+
+  /// No description provided for @envProduction.
+  ///
+  /// In ar, this message translates to:
+  /// **'الإنتاج (Production)'**
+  String get envProduction;
+
+  /// No description provided for @envLocal.
+  ///
+  /// In ar, this message translates to:
+  /// **'محلي (Local)'**
+  String get envLocal;
+
+  /// No description provided for @envCustom.
+  ///
+  /// In ar, this message translates to:
+  /// **'مخصص (Custom URL)'**
+  String get envCustom;
+
+  /// No description provided for @customServerUrl.
+  ///
+  /// In ar, this message translates to:
+  /// **'عنوان الخادم المخصص'**
+  String get customServerUrl;
+
+  /// No description provided for @customUrlHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'http://10.0.2.2:5158 أو النطاق'**
+  String get customUrlHint;
+
+  /// No description provided for @environmentSwitched.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تغيير بيئة الخادم إلى: {env}'**
+  String environmentSwitched(String env);
+
+  /// No description provided for @invalidUrl.
+  ///
+  /// In ar, this message translates to:
+  /// **'عنوان URL غير صالح'**
+  String get invalidUrl;
 }
 
 class _AppLocalizationsDelegate
