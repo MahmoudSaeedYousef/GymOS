@@ -29,7 +29,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519_gymos
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
-          ssh -i ~/.ssh/id_ed25519_gymos ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519_gymos ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
             set -e
             cd /opt/gymos
 
@@ -42,18 +42,22 @@ jobs:
             docker compose ps api
 
             echo "Waiting for GymOS API (prod) on port 5050..."
+            READY=false
             for i in $(seq 1 20); do
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5050/ || true)
               if [ "$STATUS" != "000" ]; then
                 echo "GymOS API (prod) is up and responding (HTTP $STATUS)!"
-                exit 0
+                READY=true
+                break
               fi
               sleep 3
             done
 
-            echo "API did not respond in time. Recent logs:"
-            docker compose logs --tail=50 api
-            exit 1
+            if [ "$READY" != "true" ]; then
+              echo "API did not respond in time. Recent logs:"
+              docker compose logs --tail=50 api
+              exit 1
+            fi
           EOF
 
   # ── Staging: develop → gymos-api-dev (port 5001) ─────────────────────────
@@ -73,7 +77,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519_gymos
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
-          ssh -i ~/.ssh/id_ed25519_gymos ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519_gymos ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
             set -e
             cd /opt/gymos
 
@@ -86,16 +90,20 @@ jobs:
             docker compose ps api-dev
 
             echo "Waiting for GymOS API (staging) on port 5001..."
+            READY=false
             for i in $(seq 1 20); do
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5001/ || true)
               if [ "$STATUS" != "000" ]; then
                 echo "GymOS API (staging) is up and responding (HTTP $STATUS)!"
-                exit 0
+                READY=true
+                break
               fi
               sleep 3
             done
 
-            echo "API-dev did not respond in time. Recent logs:"
-            docker compose logs --tail=50 api-dev
-            exit 1
+            if [ "$READY" != "true" ]; then
+              echo "API-dev did not respond in time. Recent logs:"
+              docker compose logs --tail=50 api-dev
+              exit 1
+            fi
           EOF
