@@ -55,6 +55,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _phoneController.text = '01012345679';
       _passwordController.text = 'StrongPassword123!';
     }
+    if (_phoneController.text == "1") {
+      _phoneController.text = '01012345678';
+      _passwordController.text = 'StrongPassword123!';
+    }
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
