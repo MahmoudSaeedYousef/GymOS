@@ -168,6 +168,7 @@ public sealed class GlobalExceptionHandler(IWebHostEnvironment env) : IException
         403 => "Forbidden",
         404 => "Not Found",
         409 => "Conflict",
+        429 => "Too Many Requests",
         499 => "Client Closed Request",
         500 => "Internal Server Error",
         503 => "Service Unavailable",

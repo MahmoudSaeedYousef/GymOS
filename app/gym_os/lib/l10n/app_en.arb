@@ -29,6 +29,24 @@
   "serverOnline": "Connected",
   "loginButton": "Sign In",
   "invalidPhoneOrPassword": "Invalid phone number or password",
+  "rateLimitTitle": "Too Many Attempts",
+  "rateLimitMessage": "Too many login attempts. Please wait {seconds} seconds before trying again.",
+  "@rateLimitMessage": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "rateLimitCooldown": "Please wait {seconds}s",
+  "@rateLimitCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "rateLimitExceeded": "Too many login attempts. Please wait before trying again.",
   "welcomeToGymOS": "Welcome to Gymmy",
   "loginSuccess": "Signed in successfully",
 

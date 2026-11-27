@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../core/network/app_exception.dart';
 import '../../../core/network/dio_client.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -24,6 +25,10 @@ class AuthService {
       await _storage.write(key: 'jwt_token', value: token);
       return token;
     } on DioException catch (e) {
+      final appError = e.error;
+      if (appError is AppException) {
+        throw appError;
+      }
       throw Exception(e.response?.data ?? 'فشل تسجيل الدخول، تأكد من البيانات');
     }
   }

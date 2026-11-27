@@ -34,6 +34,24 @@
   "serverOnline": "متصل",
   "loginButton": "تسجيل الدخول",
   "invalidPhoneOrPassword": "رقم الهاتف أو كلمة المرور غير صحيحة",
+  "rateLimitTitle": "محاولات تسجيل دخول كثيرة",
+  "rateLimitMessage": "لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار {seconds} ثانية قبل المحاولة مجدداً.",
+  "@rateLimitMessage": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "rateLimitCooldown": "يرجى الانتظار {seconds} ث",
+  "@rateLimitCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "rateLimitExceeded": "لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار قبل المحاولة مجدداً.",
   "welcomeToGymOS": "أهلاً بك في Gymmy",
   "loginSuccess": "تم تسجيل الدخول بنجاح",
   "goodMorningCaptain": "صباح الخير، يا كابتن 👋",

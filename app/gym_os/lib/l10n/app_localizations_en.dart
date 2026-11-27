@@ -92,6 +92,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invalidPhoneOrPassword => 'Invalid phone number or password';
 
   @override
+  String get rateLimitTitle => 'Too Many Attempts';
+
+  @override
+  String rateLimitMessage(int seconds) {
+    return 'Too many login attempts. Please wait $seconds seconds before trying again.';
+  }
+
+  @override
+  String rateLimitCooldown(int seconds) {
+    return 'Please wait ${seconds}s';
+  }
+
+  @override
+  String get rateLimitExceeded =>
+      'Too many login attempts. Please wait before trying again.';
+
+  @override
   String get welcomeToGymOS => 'Welcome to Gymmy';
 
   @override

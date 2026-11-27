@@ -1,17 +1,36 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gym_os/core/network/app_exception.dart';
 import 'package:gym_os/core/theme/app_theme.dart';
+import 'package:gym_os/features/auth/services/auth_service.dart';
 import 'package:gym_os/features/auth/ui/login_screen.dart';
 import 'package:gym_os/l10n/app_localizations.dart';
+
+class MockRateLimitAuthService extends AuthService {
+  final int retryAfterSeconds;
+  MockRateLimitAuthService({this.retryAfterSeconds = 10}) : super(Dio());
+
+  @override
+  Future<String> login(String phone, String password) async {
+    throw RateLimitException(
+      retryAfterSeconds: retryAfterSeconds,
+      message: 'Rate limit exceeded',
+    );
+  }
+}
 
 Widget createLoginScreen({
   Locale locale = const Locale('en'),
   double textScale = 1.0,
   bool disableAnimations = false,
+  List<Override> overrides = const [],
 }) {
   return ProviderScope(
+    overrides: overrides,
     child: MaterialApp(
       theme: AppTheme.darkTheme(),
       locale: locale,
@@ -116,6 +135,79 @@ void main() {
       expect(find.text('Gymmy'), findsOneWidget);
       expect(find.text('تسجيل الدخول'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('rate limit response displays localized cooldown and countdown', (tester) async {
+      await tester.pumpWidget(createLoginScreen(
+        locale: const Locale('en'),
+        disableAnimations: true,
+        overrides: [
+          authServiceProvider.overrideWithValue(
+            MockRateLimitAuthService(retryAfterSeconds: 5),
+          ),
+        ],
+      ));
+      await tester.pump();
+
+      final textFields = find.byType(TextField);
+      expect(textFields, findsNWidgets(2));
+
+      await tester.enterText(textFields.first, '01012345678');
+      await tester.enterText(textFields.last, 'Password123!');
+      await tester.pump();
+
+      // Tap Sign In -> triggers 429 RateLimitException
+      await tester.tap(find.text('Sign In'));
+      await tester.pump(); // Start async call
+      await tester.pump(); // Handle error & setState
+
+      // Expect cooldown message and disabled button with countdown
+      expect(find.text('Too many login attempts. Please wait 5 seconds before trying again.'), findsWidgets);
+      expect(find.text('Please wait 5s'), findsOneWidget);
+
+      // Advance by 1 second
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Please wait 4s'), findsOneWidget);
+
+      // Advance remaining seconds
+      await tester.pump(const Duration(seconds: 4));
+      // Cooldown finished -> returns to Sign In
+      expect(find.text('Sign In'), findsOneWidget);
+    });
+
+    testWidgets('rate limit response displays localized cooldown in Arabic', (tester) async {
+      await tester.pumpWidget(createLoginScreen(
+        locale: const Locale('ar'),
+        disableAnimations: true,
+        overrides: [
+          authServiceProvider.overrideWithValue(
+            MockRateLimitAuthService(retryAfterSeconds: 3),
+          ),
+        ],
+      ));
+      await tester.pump();
+
+      final textFields = find.byType(TextField);
+      await tester.enterText(textFields.first, '01012345678');
+      await tester.enterText(textFields.last, 'Password123!');
+      await tester.pump();
+
+      // Tap Sign In in Arabic
+      await tester.tap(find.text('تسجيل الدخول'));
+      await tester.pump();
+      await tester.pump();
+
+      // Expect Arabic cooldown text
+      expect(find.text('لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار 3 ثانية قبل المحاولة مجدداً.'), findsWidgets);
+      expect(find.text('يرجى الانتظار 3 ث'), findsOneWidget);
+
+      // Advance by 1 second
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('يرجى الانتظار 2 ث'), findsOneWidget);
+
+      // Advance to end
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text('تسجيل الدخول'), findsOneWidget);
     });
   });
 }

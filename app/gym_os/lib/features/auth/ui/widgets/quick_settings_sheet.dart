@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gym_os/core/l10n/l10n_extension.dart';
-import 'package:gym_os/core/network/environment_store.dart';
 import 'package:gym_os/core/providers/app_settings_provider.dart';
 import 'package:gym_os/core/theme/app_spacing.dart';
 import 'package:gym_os/core/theme/app_theme.dart';
-import 'package:gym_os/features/auth/ui/widgets/environment_switcher_sheet.dart';
 
 /// Opens the quick settings bottom sheet for pre-auth actions
 /// (Theme mode toggle, language toggle, and server environment status/switching).

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using GymOS.Api.RateLimiting;
 using GymOS.Application.DTOs.Auth;
 using GymOS.Application.Mappers;
 using GymOS.Domain.Entities;
@@ -78,7 +79,8 @@ public static class AuthEndpoints
                 FullName = user.FullName,
                 PhoneNumber = user.PhoneNumber!
             });
-        });
+        })
+        .RequireRateLimiting(RateLimitingExtensions.AuthLoginPolicy);
     }
 
     // 3. دالة توليد الـ JWT Token

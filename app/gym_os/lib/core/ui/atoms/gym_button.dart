@@ -78,15 +78,19 @@ class _GymButtonState extends State<GymButton> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (widget.icon != null) ...[
-            Icon(widget.icon, size: 20, color: Colors.white),
+            Icon(
+              widget.icon,
+              size: 20,
+              color: isEnabled ? Colors.white : colors.textSecondary,
+            ),
             const SizedBox(width: AppSpacing.sm),
           ],
           Text(
             widget.label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: isEnabled ? Colors.white : colors.textSecondary,
             ),
           ),
         ],
@@ -98,7 +102,7 @@ class _GymButtonState extends State<GymButton> {
       height: 50,
       decoration: BoxDecoration(
         borderRadius: AppSpacing.borderRadiusSm,
-        gradient: widget.isLoading
+        gradient: (widget.isLoading || !isEnabled)
             ? null
             : LinearGradient(
                 begin: AlignmentDirectional.topStart,
@@ -108,10 +112,10 @@ class _GymButtonState extends State<GymButton> {
                   Color.lerp(colors.brandPrimary, Colors.black, 0.12)!,
                 ],
               ),
-        color: widget.isLoading
+        color: (widget.isLoading || !isEnabled)
             ? colors.surfaceLevel2
-            : (isEnabled ? null : colors.surfaceLevel2),
-        border: widget.isLoading
+            : null,
+        border: (widget.isLoading || !isEnabled)
             ? Border.all(color: colors.surfaceBorder)
             : null,
       ),

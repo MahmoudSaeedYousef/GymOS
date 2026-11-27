@@ -1,0 +1,367 @@
+diff --git a/Orderly.Api.Tests/Banners/BannerRulesTests.cs b/Orderly.Api.Tests/Banners/BannerRulesTests.cs
+new file mode 100644
+index 0000000..d07a47e
+--- /dev/null
++++ b/Orderly.Api.Tests/Banners/BannerRulesTests.cs
+@@ -0,0 +1,131 @@
++using FluentAssertions;
++using Microsoft.AspNetCore.Http;
++using Moq;
++using Orderly.Api.Core.Dtos.Banners;
++using Orderly.Api.Infrastructure.Services;
++using Xunit;
++
++namespace Orderly.Api.Tests.Banners;
++
++public class BannerRulesTests
++{
++    private static IFormFile File(string name = "jacket.png", string type = "image/png", long length = 1000)
++    {
++        var f = new Mock<IFormFile>();
++        f.Setup(x => x.FileName).Returns(name);
++        f.Setup(x => x.ContentType).Returns(type);
++        f.Setup(x => x.Length).Returns(length);
++        return f.Object;
++    }
++
++    private static BannerRequest Cutout(IFormFile? file = null) => new()
++    {
++        LayoutStyle = "cutout",
++        Title = "خصم 20%",
++        ImageFile = file ?? File(),
++    };
++
++    [Fact]
++    public void OldStyle_NoLayoutStyle_ClearsTextFields()
++    {
++        var request = new BannerRequest { ImageFile = File("a.jpg", "image/jpeg"), Title = "x" };
++
++        var c = BannerRules.Normalize(request, existingStyle: null, isCreate: true);
++
++        c.LayoutStyle.Should().BeNull();
++        c.Title.Should().BeNull();
++        c.CutoutAlign.Should().BeNull();
++    }
++
++    [Fact]
++    public void Cutout_Valid_DefaultsAlignToEndAndNormalizesColor()
++    {
++        var request = Cutout();
++        request.BgColor = "1e40af";
++        request.Subtitle = "  لفترة محدودة  ";
++
++        var c = BannerRules.Normalize(request, null, isCreate: true);
++
++        c.LayoutStyle.Should().Be("cutout");
++        c.CutoutAlign.Should().Be("end");
++        c.BgColor.Should().Be("#1E40AF");
++        c.Subtitle.Should().Be("لفترة محدودة");
++    }
++
++    [Fact]
++    public void Cutout_WithoutTitle_Throws()
++    {
++        var request = Cutout();
++        request.Title = "  ";
++
++        var act = () => BannerRules.Normalize(request, null, isCreate: true);
++
++        act.Should().Throw<BadHttpRequestException>();
++    }
++
++    [Theory]
++    [InlineData("a.jpg", "image/jpeg")]
++    [InlineData("a.png", "image/jpeg")]
++    [InlineData("a.gif", "image/gif")]
++    public void Cutout_WrongFileType_Throws(string name, string type)
++    {
++        var act = () => BannerRules.Normalize(Cutout(File(name, type)), null, isCreate: true);
++
++        act.Should().Throw<BadHttpRequestException>();
++    }
++
++    [Fact]
++    public void Cutout_FileTooLarge_Throws()
++    {
++        var act = () => BannerRules.Normalize(
++            Cutout(File(length: BannerRules.MaxCutoutBytes + 1)), null, isCreate: true);
++
++        act.Should().Throw<BadHttpRequestException>();
++    }
++
++    [Theory]
++    [InlineData("middle")]
++    [InlineData("left")]
++    public void Cutout_BadAlign_Throws(string align)
++    {
++        var request = Cutout();
++        request.CutoutAlign = align;
++
++        var act = () => BannerRules.Normalize(request, null, isCreate: true);
++
++        act.Should().Throw<BadHttpRequestException>();
++    }
++
++    [Fact]
++    public void Cutout_BadColor_Throws()
++    {
++        var request = Cutout();
++        request.BgColor = "red";
++
++        var act = () => BannerRules.Normalize(request, null, isCreate: true);
++
++        act.Should().Throw<BadHttpRequestException>();
++    }
++
++    [Fact]
++    public void Update_ExistingCutout_AllowsEditWithoutNewFile()
++    {
++        var request = Cutout();
++        request.ImageFile = null;
++
++        var c = BannerRules.Normalize(request, existingStyle: "cutout", isCreate: false);
++
++        c.Title.Should().Be("خصم 20%");
++    }
++
++    [Fact]
++    public void Update_OldBannerToCutout_RequiresNewFile()
++    {
++        var request = Cutout();
++        request.ImageFile = null;
++
++        var act = () => BannerRules.Normalize(request, existingStyle: null, isCreate: false);
++
++        act.Should().Throw<BadHttpRequestException>();
++    }
++}
+diff --git a/Orderly.Api/Core/Dtos/Banners/BannerRequest.cs b/Orderly.Api/Core/Dtos/Banners/BannerRequest.cs
+index 2a54b84..8dbf12e 100644
+--- a/Orderly.Api/Core/Dtos/Banners/BannerRequest.cs
++++ b/Orderly.Api/Core/Dtos/Banners/BannerRequest.cs
+@@ -17,5 +17,13 @@ namespace Orderly.Api.Core.Dtos.Banners
+         // 🎯 الحقول المفقودة التي تم إحياؤها بالمسطرة
+         public DateTime? ExpiresAt { get; set; }
+         public List<string> TargetTiers { get; set; } = new();
++
++        // 🎨 بانر الكارت المبني بالكود. ImageFile هنا هو الصورة المفرغة (PNG/WebP) لما LayoutStyle = "cutout"
++        public string? LayoutStyle { get; set; }
++        public string? Title { get; set; }
++        public string? Subtitle { get; set; }
++        public string? ButtonText { get; set; }
++        public string? CutoutAlign { get; set; }
++        public string? BgColor { get; set; }
+     }
+ }
+diff --git a/Orderly.Api/Core/Entities/Banner.cs b/Orderly.Api/Core/Entities/Banner.cs
+index acfb332..58f5a1c 100644
+--- a/Orderly.Api/Core/Entities/Banner.cs
++++ b/Orderly.Api/Core/Entities/Banner.cs
+@@ -17,6 +17,15 @@ namespace Orderly.Api.Core.Entities
+         public DateTime? ExpiresAt { get; set; } // تاريخ انتهاء الإعلان
+         public List<string> TargetTiers { get; set; } = []; // الفئات المستهدفة (basic, premium, wholesale)
+ 
++        // 🎨 بانر الكارت المبني بالكود (كله nullable: البانر القديم LayoutStyle = null بيتعرض كصورة كاملة)
++        // لو LayoutStyle = "cutout" يبقى ImageUrl هو رابط صورة PNG/WebP المفرغة
++        public string? LayoutStyle { get; set; }
++        public string? Title { get; set; }
++        public string? Subtitle { get; set; }
++        public string? ButtonText { get; set; }
++        public string? CutoutAlign { get; set; } // "start" | "end"
++        public string? BgColor { get; set; } // "#RRGGBB" أو null = لون الثيم
++
+         public DateTime CreatedAt { get; set; }
+         public DateTime UpdatedAt { get; set; }
+         public string CreatedBy { get; set; } = string.Empty;
+diff --git a/Orderly.Api/Infrastructure/Data/OrderlyDbContext.cs b/Orderly.Api/Infrastructure/Data/OrderlyDbContext.cs
+index 8bcf1b9..6dd38f3 100644
+--- a/Orderly.Api/Infrastructure/Data/OrderlyDbContext.cs
++++ b/Orderly.Api/Infrastructure/Data/OrderlyDbContext.cs
+@@ -332,6 +332,12 @@ public sealed class OrderlyDbContext(DbContextOptions<OrderlyDbContext> options,
+             entity.Property(e => e.ImageUrl).IsRequired();
+             entity.Property(e => e.DisplayOrder);
+             entity.Property(e => e.IsActive);
++            entity.Property(e => e.LayoutStyle).HasMaxLength(20);
++            entity.Property(e => e.Title).HasMaxLength(100);
++            entity.Property(e => e.Subtitle).HasMaxLength(200);
++            entity.Property(e => e.ButtonText).HasMaxLength(50);
++            entity.Property(e => e.CutoutAlign).HasMaxLength(10);
++            entity.Property(e => e.BgColor).HasMaxLength(9);
+         });
+         
+         // 1. علاقة Master-Details بين الـ CustomerPaymentTrack والـ OrderPaymentTrack
+diff --git a/Orderly.Api/Infrastructure/Services/BannerRules.cs b/Orderly.Api/Infrastructure/Services/BannerRules.cs
+new file mode 100644
+index 0000000..954f943
+--- /dev/null
++++ b/Orderly.Api/Infrastructure/Services/BannerRules.cs
+@@ -0,0 +1,104 @@
++using System.Text.RegularExpressions;
++using Microsoft.AspNetCore.Http;
++using Orderly.Api.Core.Dtos.Banners;
++
++namespace Orderly.Api.Infrastructure.Services;
++
++/// <summary>القيم المنظفة لحقول بانر الكارت.</summary>
++public sealed record BannerContent(
++    string? LayoutStyle,
++    string? Title,
++    string? Subtitle,
++    string? ButtonText,
++    string? CutoutAlign,
++    string? BgColor);
++
++/// <summary>قواعد التحقق من بانر الكارت (cutout) في مكان واحد وقابلة للاختبار.</summary>
++public static class BannerRules
++{
++    public const string CutoutStyle = "cutout";
++    public const int MaxTitle = 40;
++    public const int MaxSubtitle = 80;
++    public const int MaxButtonText = 20;
++    public const long MaxCutoutBytes = 2 * 1024 * 1024;
++
++    private static readonly Regex HexColor = new("^#?[0-9A-Fa-f]{6}$", RegexOptions.Compiled);
++
++    /// <summary>
++    /// بينظف ويتحقق من حقول البانر. بيرمي BadHttpRequestException لو فيه مشكلة.
++    /// </summary>
++    /// <param name="request">الطلب</param>
++    /// <param name="existingStyle">LayoutStyle الحالي للبانر عند التعديل (null عند الإنشاء)</param>
++    /// <param name="isCreate">إنشاء جديد؟</param>
++    public static BannerContent Normalize(BannerRequest request, string? existingStyle, bool isCreate)
++    {
++        var style = string.IsNullOrWhiteSpace(request.LayoutStyle)
++            ? null
++            : request.LayoutStyle.Trim().ToLowerInvariant();
++
++        if (style != null && style != CutoutStyle)
++            throw new BadHttpRequestException("نوع البنر غير مدعوم.");
++
++        if (style == null)
++        {
++            // بانر صورة كاملة قديم: مفيش نصوص
++            return new BannerContent(null, null, null, null, null, null);
++        }
++
++        var title = request.Title?.Trim();
++        if (string.IsNullOrEmpty(title))
++            throw new BadHttpRequestException("عنوان البنر مطلوب.");
++        if (title.Length > MaxTitle)
++            throw new BadHttpRequestException($"العنوان لا يزيد عن {MaxTitle} حرف.");
++
++        var subtitle = NullIfEmpty(request.Subtitle);
++        if (subtitle != null && subtitle.Length > MaxSubtitle)
++            throw new BadHttpRequestException($"الوصف لا يزيد عن {MaxSubtitle} حرف.");
++
++        var buttonText = NullIfEmpty(request.ButtonText);
++        if (buttonText != null && buttonText.Length > MaxButtonText)
++            throw new BadHttpRequestException($"نص الزر لا يزيد عن {MaxButtonText} حرف.");
++
++        var align = NullIfEmpty(request.CutoutAlign)?.ToLowerInvariant() ?? "end";
++        if (align != "start" && align != "end")
++            throw new BadHttpRequestException("اتجاه الصورة لازم يكون start أو end.");
++
++        string? color = null;
++        var rawColor = NullIfEmpty(request.BgColor);
++        if (rawColor != null)
++        {
++            if (!HexColor.IsMatch(rawColor))
++                throw new BadHttpRequestException("لون الخلفية لازم يكون بصيغة #RRGGBB.");
++            color = "#" + rawColor.TrimStart('#').ToUpperInvariant();
++        }
++
++        // الصورة المفرغة
++        var hasFile = request.ImageFile is { Length: > 0 };
++        if (isCreate && !hasFile)
++            throw new BadHttpRequestException("الصورة المفرغة مطلوبة.");
++        if (!isCreate && existingStyle != CutoutStyle && !hasFile)
++            throw new BadHttpRequestException("لازم ترفع صورة مفرغة عند التحويل لبنر كارت.");
++        if (hasFile)
++            ValidateCutoutFile(request.ImageFile!);
++
++        return new BannerContent(CutoutStyle, title, subtitle, buttonText, align, color);
++    }
++
++    public static void ValidateCutoutFile(IFormFile file)
++    {
++        var ext = Path.GetExtension(file.FileName ?? string.Empty).ToLowerInvariant();
++        var type = (file.ContentType ?? string.Empty).ToLowerInvariant();
++        var okExt = ext is ".png" or ".webp";
++        var okType = type is "image/png" or "image/webp";
++        if (!okExt || !okType)
++            throw new BadHttpRequestException("الصورة المفرغة لازم تكون PNG أو WebP.");
++        if (file.Length > MaxCutoutBytes)
++            throw new BadHttpRequestException("حجم الصورة المفرغة لازم يكون أقل من 2 ميجا.");
++    }
++
++    private static string? NullIfEmpty(string? v)
++    {
++        var t = v?.Trim();
++        return string.IsNullOrEmpty(t) ? null : t;
++    }
++}
+diff --git a/Orderly.Api/Infrastructure/Services/BannerService.cs b/Orderly.Api/Infrastructure/Services/BannerService.cs
+index eda09cc..e257bc3 100644
+--- a/Orderly.Api/Infrastructure/Services/BannerService.cs
++++ b/Orderly.Api/Infrastructure/Services/BannerService.cs
+@@ -106,8 +106,16 @@ namespace Orderly.Api.Infrastructure.Services
+             var currentUserId = _currentUserService.GetUserId()?.ToString() 
+                                 ?? throw new UnauthorizedAccessException("لم يتم التعرف على هوية المستخدم الحالي.");
+ 
++            var content = BannerRules.Normalize(request, existingStyle: null, isCreate: true);
++
+             var banner = new Banner
+             {
++                LayoutStyle = content.LayoutStyle,
++                Title = content.Title,
++                Subtitle = content.Subtitle,
++                ButtonText = content.ButtonText,
++                CutoutAlign = content.CutoutAlign,
++                BgColor = content.BgColor,
+                 RedirectAction = request.RedirectAction?.Trim(),
+                 DisplayOrder = request.DisplayOrder,
+                 IsActive = request.IsActive,
+@@ -133,6 +141,18 @@ namespace Orderly.Api.Infrastructure.Services
+         public async Task<Banner> UpdateBannerAsync(Guid id, BannerRequest request, CancellationToken cancellationToken = default)
+         {
+             var banner = await _bannerRepository.GetByIdAsync(id, cancellationToken);
++            if (banner == null)
++            {
++                return null;
++            }
++
++            var content = BannerRules.Normalize(request, existingStyle: banner.LayoutStyle, isCreate: false);
++            banner.LayoutStyle = content.LayoutStyle;
++            banner.Title = content.Title;
++            banner.Subtitle = content.Subtitle;
++            banner.ButtonText = content.ButtonText;
++            banner.CutoutAlign = content.CutoutAlign;
++            banner.BgColor = content.BgColor;
+ 
+             banner.RedirectAction = request.RedirectAction;
+             banner.DisplayOrder = request.DisplayOrder;
+diff --git a/Orderly.Api/Scripts/2026-11-26_banners_cutout.sql b/Orderly.Api/Scripts/2026-11-26_banners_cutout.sql
+new file mode 100644
+index 0000000..b807465
+--- /dev/null
++++ b/Orderly.Api/Scripts/2026-11-26_banners_cutout.sql
+@@ -0,0 +1,19 @@
++-- بانر الكارت المبني بالكود (cutout): أعمدة جديدة كلها NULL، فالبانرات القديمة بتفضل شغالة زي ما هي.
++-- شغّله مرة واحدة على قاعدة البيانات (SQL Server). آمن لو اتشغل تاني.
++-- لازم يتشغل قبل نشر الباك إند الجديد.
++
++IF COL_LENGTH('dbo.Banners', 'LayoutStyle') IS NULL
++    ALTER TABLE dbo.Banners ADD LayoutStyle nvarchar(20) NULL;
++IF COL_LENGTH('dbo.Banners', 'Title') IS NULL
++    ALTER TABLE dbo.Banners ADD Title nvarchar(100) NULL;
++IF COL_LENGTH('dbo.Banners', 'Subtitle') IS NULL
++    ALTER TABLE dbo.Banners ADD Subtitle nvarchar(200) NULL;
++IF COL_LENGTH('dbo.Banners', 'ButtonText') IS NULL
++    ALTER TABLE dbo.Banners ADD ButtonText nvarchar(50) NULL;
++IF COL_LENGTH('dbo.Banners', 'CutoutAlign') IS NULL
++    ALTER TABLE dbo.Banners ADD CutoutAlign nvarchar(10) NULL;
++IF COL_LENGTH('dbo.Banners', 'BgColor') IS NULL
++    ALTER TABLE dbo.Banners ADD BgColor nvarchar(9) NULL;
++
++-- للتراجع (لو احتجت):
++-- ALTER TABLE dbo.Banners DROP COLUMN LayoutStyle, Title, Subtitle, ButtonText, CutoutAlign, BgColor;

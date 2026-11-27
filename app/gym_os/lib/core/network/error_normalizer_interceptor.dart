@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 
 import 'app_exception.dart';
@@ -40,7 +42,7 @@ class ErrorNormalizerInterceptor extends Interceptor {
     final statusCode = response.statusCode ?? 0;
     final body = _parseBody(response);
     final message = _extractMessage(body);
-    final traceId = _extractString(body, 'traceId');
+    final traceId = _extractTraceId(response, body);
 
     return switch (statusCode) {
       // ── Gateway / infra errors → OfflineException ──
@@ -53,6 +55,13 @@ class ErrorNormalizerInterceptor extends Interceptor {
           traceId: traceId,
         ),
       403 => AuthException.forbidden(
+          message: message,
+          traceId: traceId,
+        ),
+
+      // ── Rate limiting ──
+      429 => RateLimitException(
+          retryAfterSeconds: _extractRetryAfter(response, body),
           message: message,
           traceId: traceId,
         ),
@@ -97,6 +106,82 @@ class ErrorNormalizerInterceptor extends Interceptor {
       final value = body[key];
       if (value is String && value.isNotEmpty) return value;
     }
+    final extensions = body['extensions'];
+    if (extensions is Map<String, dynamic>) {
+      for (final key in const ['message', 'detail', 'error']) {
+        final value = extensions[key];
+        if (value is String && value.isNotEmpty) return value;
+      }
+    }
+    return null;
+  }
+
+  /// Extracts trace or correlation ID from body or response headers.
+  String? _extractTraceId(
+    Response<dynamic> response,
+    Map<String, dynamic>? body,
+  ) {
+    if (body != null) {
+      final direct = _extractString(body, 'traceId') ??
+          _extractString(body, 'correlationId');
+      if (direct != null) return direct;
+
+      final extensions = body['extensions'];
+      if (extensions is Map<String, dynamic>) {
+        final extTrace = _extractString(extensions, 'traceId') ??
+            _extractString(extensions, 'correlationId');
+        if (extTrace != null) return extTrace;
+      }
+    }
+    return response.headers.value('x-correlation-id') ??
+        response.headers.value('traceparent');
+  }
+
+  /// Extracts the retry-after duration in seconds from ProblemDetails
+  /// or the `Retry-After` HTTP header, with fallback to 60 seconds.
+  int _extractRetryAfter(
+    Response<dynamic> response,
+    Map<String, dynamic>? body,
+  ) {
+    // 1. Check ProblemDetails extensions (e.g. ProblemDetails.extensions.retryAfterSeconds)
+    if (body != null) {
+      final extensions = body['extensions'];
+      if (extensions is Map<String, dynamic>) {
+        final extVal = extensions['retryAfterSeconds'];
+        final parsed = _toInt(extVal);
+        if (parsed != null && parsed > 0) return parsed;
+      }
+
+      // Check top-level body field
+      final direct = body['retryAfterSeconds'];
+      final parsed = _toInt(direct);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+
+    // 2. Check Retry-After response header
+    final headerVal = response.headers.value('retry-after');
+    if (headerVal != null && headerVal.trim().isNotEmpty) {
+      final trimmed = headerVal.trim();
+      final parsedSec = int.tryParse(trimmed);
+      if (parsedSec != null && parsedSec > 0) {
+        return parsedSec;
+      }
+      try {
+        final httpDate = HttpDate.parse(trimmed);
+        final diff = httpDate.difference(DateTime.now()).inSeconds;
+        if (diff > 0) return diff;
+      } catch (_) {
+        // Not an HTTP date string
+      }
+    }
+
+    // 3. Fallback default
+    return 60;
+  }
+
+  static int? _toInt(dynamic value) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
     return null;
   }
 

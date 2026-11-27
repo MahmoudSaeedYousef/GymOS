@@ -1,7 +1,11 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gym_os/core/network/app_exception.dart';
 import 'package:gym_os/core/network/environment_store.dart';
 import 'package:gym_os/core/ui/atoms/gym_button.dart';
 import 'package:gym_os/core/ui/atoms/gym_card.dart';
@@ -27,8 +31,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+  int _cooldownSeconds = 0;
+  Timer? _cooldownTimer;
+
+  void _startCooldown(int seconds) {
+    _cooldownTimer?.cancel();
+    setState(() => _cooldownSeconds = seconds);
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_cooldownSeconds > 1) {
+          _cooldownSeconds--;
+        } else {
+          _cooldownSeconds = 0;
+          timer.cancel();
+        }
+      });
+    });
+  }
 
   Future<void> _handleLogin() async {
+    if (_cooldownSeconds > 0) return;
+
     if (_phoneController.text.isEmpty) {
       _phoneController.text = '01012345679';
       _passwordController.text = 'StrongPassword123!';
@@ -52,7 +79,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // أنيميشن ترحيب سريع يشتغل فوق الـ rootNavigator أثناء انتقال GoRouter للداشبورد
       showLoginSuccessAnimation(context);
     } catch (e) {
-      if (mounted) {
+      if (!mounted) return;
+
+      RateLimitException? rateLimitEx;
+      if (e is RateLimitException) {
+        rateLimitEx = e;
+      } else if (e is DioException && e.error is RateLimitException) {
+        rateLimitEx = e.error as RateLimitException;
+      }
+
+      if (rateLimitEx != null) {
+        _startCooldown(rateLimitEx.retryAfterSeconds);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.rateLimitMessage(rateLimitEx.retryAfterSeconds),
+            ),
+            backgroundColor: context.gymColors.warning,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(context.l10n.invalidPhoneOrPassword),
@@ -68,6 +115,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -216,12 +264,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
 
     // 3. Button
+    final isCoolingDown = _cooldownSeconds > 0;
     Widget buttonWidget = GymButton(
-      label: l10n.loginButton,
-      icon: Icons.login_rounded,
+      label: isCoolingDown
+          ? l10n.rateLimitCooldown(_cooldownSeconds)
+          : l10n.loginButton,
+      icon: isCoolingDown ? Icons.timer_outlined : Icons.login_rounded,
       isLoading: _isLoading,
-      onPressed: _handleLogin,
-      semanticLabel: l10n.loginButton,
+      onPressed: (_isLoading || isCoolingDown) ? null : _handleLogin,
+      semanticLabel: isCoolingDown
+          ? l10n.rateLimitCooldown(_cooldownSeconds)
+          : l10n.loginButton,
     );
 
     // 4. Form Card
@@ -270,6 +323,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   (v == null || v.isEmpty) ? l10n.passwordRequired : null,
             ),
             const SizedBox(height: AppSpacing.xl),
+            if (isCoolingDown) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.warning.withValues(alpha: 0.12),
+                  borderRadius: AppSpacing.borderRadiusSm,
+                  border: Border.all(
+                    color: colors.warning.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.access_time_rounded,
+                      color: colors.warning,
+                      size: 20,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        l10n.rateLimitMessage(_cooldownSeconds),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: colors.warning,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
             if (!disableAnimations)
               buttonWidget
                   .animate()

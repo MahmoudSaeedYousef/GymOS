@@ -260,6 +260,30 @@ abstract class AppLocalizations {
   /// **'رقم الهاتف أو كلمة المرور غير صحيحة'**
   String get invalidPhoneOrPassword;
 
+  /// No description provided for @rateLimitTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'محاولات تسجيل دخول كثيرة'**
+  String get rateLimitTitle;
+
+  /// No description provided for @rateLimitMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار {seconds} ثانية قبل المحاولة مجدداً.'**
+  String rateLimitMessage(int seconds);
+
+  /// No description provided for @rateLimitCooldown.
+  ///
+  /// In ar, this message translates to:
+  /// **'يرجى الانتظار {seconds} ث'**
+  String rateLimitCooldown(int seconds);
+
+  /// No description provided for @rateLimitExceeded.
+  ///
+  /// In ar, this message translates to:
+  /// **'لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار قبل المحاولة مجدداً.'**
+  String get rateLimitExceeded;
+
   /// No description provided for @welcomeToGymOS.
   ///
   /// In ar, this message translates to:

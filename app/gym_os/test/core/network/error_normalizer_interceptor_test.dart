@@ -15,6 +15,7 @@ void main() {
       int? statusCode,
       dynamic data,
       DioExceptionType type = DioExceptionType.badResponse,
+      Headers? headers,
     }) {
       final requestOptions = RequestOptions(path: '/test');
       final response = statusCode != null
@@ -22,6 +23,7 @@ void main() {
               requestOptions: requestOptions,
               statusCode: statusCode,
               data: data,
+              headers: headers ?? Headers(),
             )
           : null;
 
@@ -230,6 +232,88 @@ void main() {
         expect(authEx.isForbidden, isTrue);
         expect(authEx.traceId, equals(traceId));
         expect(authEx.message, equals('ليس لديك صلاحية لتنفيذ هذا الإجراء'));
+      });
+    });
+
+    group('RateLimitException mapping (429)', () {
+      test('maps 429 with retryAfterSeconds in ProblemDetails extensions and correlationId', () {
+        const arabicDetail = 'لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار قبل المحاولة مجدداً.';
+        const correlationId = 'corr-429-auth-test';
+
+        final dioError = createDioException(
+          statusCode: 429,
+          data: {
+            'status': 429,
+            'title': 'Too Many Requests',
+            'detail': arabicDetail,
+            'extensions': {
+              'message': arabicDetail,
+              'errorCode': 'RATE_LIMIT_EXCEEDED',
+              'correlationId': correlationId,
+              'retryAfterSeconds': 45,
+            },
+          },
+        );
+
+        final result = normalize(dioError);
+
+        expect(result, isA<RateLimitException>());
+        final rateLimitEx = result as RateLimitException;
+        expect(rateLimitEx.retryAfterSeconds, equals(45));
+        expect(rateLimitEx.message, equals(arabicDetail));
+        expect(rateLimitEx.traceId, equals(correlationId));
+      });
+
+      test('maps 429 with top-level retryAfterSeconds', () {
+        final dioError = createDioException(
+          statusCode: 429,
+          data: {
+            'retryAfterSeconds': 30,
+            'message': 'Rate limited',
+          },
+        );
+
+        final result = normalize(dioError);
+
+        expect(result, isA<RateLimitException>());
+        final rateLimitEx = result as RateLimitException;
+        expect(rateLimitEx.retryAfterSeconds, equals(30));
+        expect(rateLimitEx.message, equals('Rate limited'));
+      });
+
+      test('maps 429 using Retry-After response header when body has no retryAfterSeconds', () {
+        final headers = Headers.fromMap({
+          'retry-after': ['25'],
+          'x-correlation-id': ['header-corr-id'],
+        });
+
+        final dioError = createDioException(
+          statusCode: 429,
+          headers: headers,
+          data: {
+            'title': 'Too Many Requests',
+          },
+        );
+
+        final result = normalize(dioError);
+
+        expect(result, isA<RateLimitException>());
+        final rateLimitEx = result as RateLimitException;
+        expect(rateLimitEx.retryAfterSeconds, equals(25));
+        expect(rateLimitEx.traceId, equals('header-corr-id'));
+      });
+
+      test('maps 429 with fallback to 60 seconds when retryAfter is absent', () {
+        final dioError = createDioException(
+          statusCode: 429,
+          data: {},
+        );
+
+        final result = normalize(dioError);
+
+        expect(result, isA<RateLimitException>());
+        final rateLimitEx = result as RateLimitException;
+        expect(rateLimitEx.retryAfterSeconds, equals(60));
       });
     });
   });

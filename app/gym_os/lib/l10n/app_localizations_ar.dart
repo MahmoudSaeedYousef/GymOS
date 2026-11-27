@@ -92,6 +92,23 @@ class AppLocalizationsAr extends AppLocalizations {
   String get invalidPhoneOrPassword => 'رقم الهاتف أو كلمة المرور غير صحيحة';
 
   @override
+  String get rateLimitTitle => 'محاولات تسجيل دخول كثيرة';
+
+  @override
+  String rateLimitMessage(int seconds) {
+    return 'لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار $seconds ثانية قبل المحاولة مجدداً.';
+  }
+
+  @override
+  String rateLimitCooldown(int seconds) {
+    return 'يرجى الانتظار $seconds ث';
+  }
+
+  @override
+  String get rateLimitExceeded =>
+      'لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار قبل المحاولة مجدداً.';
+
+  @override
   String get welcomeToGymOS => 'أهلاً بك في Gymmy';
 
   @override

@@ -79,6 +79,31 @@ final class AuthException extends AppException {
       'AuthException(status=$statusCode, traceId=$traceId)';
 }
 
+/// Rate limiting / throttling exception (HTTP 429).
+///
+/// Carries [retryAfterSeconds] indicating how long the client should wait
+/// before retrying the request.
+final class RateLimitException extends AppException {
+  const RateLimitException({
+    required this.retryAfterSeconds,
+    this.message,
+    this.traceId,
+  });
+
+  /// The cooldown duration in seconds before next attempt is allowed.
+  final int retryAfterSeconds;
+
+  /// Optional message from server or fallback.
+  final String? message;
+
+  /// Correlation / trace ID returned by the server.
+  final String? traceId;
+
+  @override
+  String toString() =>
+      'RateLimitException(retryAfter=$retryAfterSeconds s, message=$message, traceId=$traceId)';
+}
+
 final class _SessionExpiredAuth extends AuthException {
   const _SessionExpiredAuth({super.message, super.traceId})
       : super._(statusCode: 401);

@@ -1,6 +1,7 @@
 using System.Text;
 using GymOS.Api.Endpoints;
 using GymOS.Api.Middleware;
+using GymOS.Api.RateLimiting;
 using GymOS.Application.Features.Plans.Commands.CreatePlan;
 using GymOS.Application.Interfaces;
 using GymOS.Domain.Entities;
@@ -8,6 +9,7 @@ using GymOS.Infrastructure.BackgroundJobs;
 using GymOS.Infrastructure.Data;
 using GymOS.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -88,6 +90,18 @@ builder.Services.AddAuthentication(options =>
     });
 
 builder.Services.AddAuthorization();
+
+// ForwardedHeaders — must be configured before the middleware runs in the pipeline
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Trust all known proxy networks (adjust to your Cloudflare/reverse-proxy CIDR in production)
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// Rate limiting
+builder.Services.AddGymOsRateLimiting();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
 builder.Services.AddScoped<IGymDbContext>(sp => sp.GetRequiredService<GymDbContext>());
@@ -107,11 +121,13 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseExceptionHandler();     // IExceptionHandler pipeline (GlobalExceptionHandler)
+app.UseForwardedHeaders();     // Honour X-Forwarded-For from Cloudflare / reverse proxy
 app.UseStaticFiles();
 app.UseCorrelationId();        // Must come early so LogContext is enriched for all subsequent middleware
 app.UseAuthentication();
 app.UseTenantIsolation(); // Must be after UseAuthentication, before UseAuthorization
 app.UseAuthorization();
+app.UseRateLimiter();          // After auth so we can inspect claims if needed in future policies
 app.UseIdempotency();
 
 app.MapHealthEndpoints();      // GET /health  — anonymous, no sensitive details
